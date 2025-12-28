@@ -2,11 +2,16 @@ const webpush = require('web-push');
 const NotificationSubscription = require('../models/NotificationSubscription');
 
 // Configure VAPID
-webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:admin@restaurant.com',
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-);
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+        process.env.VAPID_SUBJECT || 'mailto:admin@restaurant.com',
+        process.env.VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+    );
+    console.log('VAPID details configured for Push Notifications');
+} else {
+    console.warn('WARNING: VAPID keys not found. Push notifications will NOT work.');
+}
 
 /**
  * Send push notification to all subscriptions of a specific restaurant and optionally specific roles/users
