@@ -42,7 +42,7 @@ const storage = new CloudinaryStorage({
 
         // Specific resizing based on field name
         if (file.fieldname === 'image') {
-            transformation.push({ width: 512, height: 512, crop: 'limit' });
+            transformation.push({ width: 384, height: 384, crop: 'limit' });
         } else if (file.fieldname === 'coverImage') {
             transformation.push({ width: 1024, crop: 'limit' });
         } else if (file.fieldname === 'qrImage') {
