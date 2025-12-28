@@ -15,3 +15,4 @@ public/uploads/
 # OS metadata
 .DS_Store
 Thumbs.db
+package-lock.json
