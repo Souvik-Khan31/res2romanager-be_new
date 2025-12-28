@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment variables
+.env
+.env.production
+.env.development
+
+# Uploads
+uploads/
+public/uploads/
+
+# OS metadata
+.DS_Store
+Thumbs.db
