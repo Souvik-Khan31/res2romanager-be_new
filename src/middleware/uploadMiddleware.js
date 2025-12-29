@@ -42,11 +42,11 @@ const storage = new CloudinaryStorage({
 
         // Specific resizing based on field name
         if (file.fieldname === 'image') {
-            transformation.push({ width: 384, height: 384, crop: 'limit' });
+            transformation.push({ width: 300, height: 300, crop: 'limit' });
         } else if (file.fieldname === 'coverImage') {
-            transformation.push({ width: 1024, crop: 'limit' });
+            transformation.push({ width: 768, crop: 'limit' });
         } else if (file.fieldname === 'qrImage') {
-            transformation.push({ width: 1000, height: 1000, crop: 'limit' });
+            transformation.push({ width: 512, height: 512, crop: 'limit' });
         }
 
         // 1. Website Name (from Env or default)
