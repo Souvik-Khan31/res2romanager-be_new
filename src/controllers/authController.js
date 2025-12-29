@@ -18,7 +18,7 @@ const generateToken = (id, sessionId) => {
 // @access  Public
 const registerRestaurant = async (req, res) => {
     const {
-        restaurantName, ownerName, email, password, phone, address, gstNumber, city
+        restaurantName, ownerName, email, password, phone, address, gstNumber, city, googleId
     } = req.body;
 
     try {
@@ -36,7 +36,7 @@ const registerRestaurant = async (req, res) => {
             ownerName,
             email,
             phone,
-            address: `${address}, ${city}`,
+            address: city && address ? `${address}, ${city}` : (address || city || 'N/A'),
             gstNumber
         });
 
@@ -47,10 +47,11 @@ const registerRestaurant = async (req, res) => {
             name: ownerName,
             email,
             username: email, // Default username is email for admin
-            password,
+            password: password || crypto.randomBytes(16).toString('hex'),
             role: 'admin',
             phone,
-            currentSessionId: sessionId
+            currentSessionId: sessionId,
+            googleId: googleId || null
         });
 
         if (restaurant && user) {
@@ -185,7 +186,7 @@ const googleLogin = async (req, res) => {
         let user = await User.findOne({ email });
 
         if (!user) {
-            // If user doesn't exist and it's a customer flow, create user
+            // If user doesn't exist and it's a customer flow, create user automatically
             if (requestedRole === 'customer') {
                 const sessionId = crypto.randomUUID();
                 user = await User.create({
@@ -199,7 +200,11 @@ const googleLogin = async (req, res) => {
                     googleId
                 });
             } else {
-                return res.status(401).json({ message: 'No account associated with this Google email. Please register first.' });
+                // For other roles (admin, staff), return the Google info so they can register
+                return res.json({
+                    newGoogleUser: true,
+                    googleData: { email, name, picture, googleId }
+                });
             }
         } else {
             // User exists, update Google ID if not set
