@@ -15,9 +15,9 @@ const initiatePayment = async (amount, orderId, customerId) => {
         merchantTransactionId: merchantTransactionId,
         merchantUserId: customerId || 'MUID' + crypto.randomUUID().slice(0, 8),
         amount: amountInPaise,
-        redirectUrl: `${process.env.PHONEPE_CALLBACK_URL}?transactionId = ${merchantTransactionId}& orderId=${orderId} `,
+        redirectUrl: `${process.env.PHONEPE_CALLBACK_URL}?transactionId=${merchantTransactionId}&orderId=${orderId}`,
         redirectMode: 'REDIRECT',
-        callbackUrl: `${process.env.BACKEND_URL || 'http://localhost:5000'} /api/phonepe / webhook`,
+        callbackUrl: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/phonepe/webhook`,
         paymentInstrument: {
             type: 'PAY_PAGE'
         }
@@ -33,7 +33,7 @@ const initiatePayment = async (amount, orderId, customerId) => {
         console.log('Merchant:', merchantId);
 
         const response = await axios.post(
-            `${process.env.PHONEPE_API_URL}${apiPath} `,
+            `${process.env.PHONEPE_API_URL}${apiPath}`,
             { request: base64EncodedPayload },
             {
                 headers: {
