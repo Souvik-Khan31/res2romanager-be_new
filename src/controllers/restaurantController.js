@@ -34,8 +34,19 @@ const updateRestaurantSettings = async (req, res) => {
         }
 
         // Merge settings
+        // Merge settings
         if (settings) {
-            restaurant.settings = { ...restaurant.settings, ...settings };
+            restaurant.settings.serviceChargePercentage = settings.serviceChargePercentage ?? restaurant.settings.serviceChargePercentage;
+            restaurant.settings.gstPercentage = settings.gstPercentage ?? restaurant.settings.gstPercentage;
+            restaurant.settings.enableServiceCharge = settings.enableServiceCharge ?? restaurant.settings.enableServiceCharge;
+            restaurant.settings.currency = settings.currency ?? restaurant.settings.currency;
+            restaurant.settings.waiterPaymentEnabled = settings.waiterPaymentEnabled ?? restaurant.settings.waiterPaymentEnabled;
+            restaurant.settings.customerLoginRequired = settings.customerLoginRequired ?? restaurant.settings.customerLoginRequired;
+            restaurant.settings.paymentFlow = settings.paymentFlow ?? restaurant.settings.paymentFlow;
+            restaurant.settings.upiId = settings.upiId ?? restaurant.settings.upiId;
+
+            // Mark as modified to be safe
+            restaurant.markModified('settings');
         }
 
         // Update basic info
@@ -95,7 +106,7 @@ const uploadQrImage = async (req, res) => {
 // @access  Public
 const getPublicSettings = async (req, res) => {
     try {
-        const restaurant = await Restaurant.findById(req.params.id).select('name settings.customerLoginRequired settings.paymentQrImage settings.paymentFlow');
+        const restaurant = await Restaurant.findById(req.params.id).select('name settings.customerLoginRequired settings.paymentQrImage settings.paymentFlow settings.upiId');
 
         if (!restaurant) {
             return res.status(404).json({ message: 'Restaurant not found' });
@@ -106,7 +117,8 @@ const getPublicSettings = async (req, res) => {
             restaurantName: restaurant.name,
             customerLoginRequired: restaurant.settings?.customerLoginRequired || false,
             paymentQrImage: restaurant.settings?.paymentQrImage || '',
-            paymentFlow: restaurant.settings?.paymentFlow || 'post'
+            paymentFlow: restaurant.settings?.paymentFlow || 'post',
+            upiId: restaurant.settings?.upiId || ''
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

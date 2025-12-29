@@ -55,6 +55,10 @@ const restaurantSchema = new mongoose.Schema({
             type: String, // URL to the QR code image
             default: ''
         },
+        upiId: {
+            type: String,
+            default: ''
+        },
         customerLoginRequired: {
             type: Boolean,
             default: false
