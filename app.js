@@ -27,6 +27,7 @@ app.use('/api/restaurants', require('./src/routes/restaurantRoutes'));
 app.use('/api/phonepe', require('./src/routes/phonepeRoutes'));
 app.use('/api/push', require('./src/routes/pushRoutes'));
 
+app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', timestamp: new Date() }));
 app.get('/', (req, res) => res.send('Restaurant SaaS API Running'));
 
 const { errorHandler } = require('./src/middleware/errorMiddleware');
