@@ -45,6 +45,16 @@ const updateRestaurantSettings = async (req, res) => {
             restaurant.settings.paymentFlow = settings.paymentFlow ?? restaurant.settings.paymentFlow;
             restaurant.settings.upiId = settings.upiId ?? restaurant.settings.upiId;
             restaurant.settings.isOrderingEnabled = settings.isOrderingEnabled ?? restaurant.settings.isOrderingEnabled;
+            restaurant.settings.geofencingEnabled = settings.geofencingEnabled ?? restaurant.settings.geofencingEnabled;
+            restaurant.settings.maxDistanceMeters = settings.maxDistanceMeters ?? restaurant.settings.maxDistanceMeters;
+            restaurant.settings.secretVersion = settings.secretVersion ?? restaurant.settings.secretVersion;
+
+            if (settings.location) {
+                restaurant.settings.location = {
+                    latitude: settings.location.latitude ?? restaurant.settings.location?.latitude,
+                    longitude: settings.location.longitude ?? restaurant.settings.location?.longitude
+                };
+            }
 
             // Mark as modified to be safe
             restaurant.markModified('settings');
