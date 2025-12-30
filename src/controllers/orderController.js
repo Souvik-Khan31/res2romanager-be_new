@@ -11,7 +11,7 @@ const { sendPushNotification } = require('../services/pushService');
 // @route   POST /api/orders
 // @access  Public (Customer)
 const placeOrder = async (req, res) => {
-    const { restaurantId, tableNumber, tableId, orderType, items, advanceRequired, advanceAmount, tableToken, customerLocation } = req.body;
+    const { restaurantId, tableNumber, tableId, orderType, items, advanceRequired, advanceAmount, tableToken, customerLocation, orderNote } = req.body;
 
     if (!items || items.length === 0) {
         return res.status(400).json({ message: 'No items in order' });
@@ -189,6 +189,7 @@ const placeOrder = async (req, res) => {
             tableNumber,
             orderType,
             items: orderItems,
+            orderNote,
             billAmount,
             taxAmount,
             serviceChargeAmount,

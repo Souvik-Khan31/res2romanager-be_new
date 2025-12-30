@@ -46,6 +46,7 @@ const updateRestaurantSettings = async (req, res) => {
             restaurant.settings.upiId = settings.upiId ?? restaurant.settings.upiId;
             restaurant.settings.isOrderingEnabled = settings.isOrderingEnabled ?? restaurant.settings.isOrderingEnabled;
             restaurant.settings.geofencingEnabled = settings.geofencingEnabled ?? restaurant.settings.geofencingEnabled;
+            restaurant.settings.isOrderNoteEnabled = settings.isOrderNoteEnabled ?? restaurant.settings.isOrderNoteEnabled;
             if (settings.maxDistanceMeters !== undefined && settings.maxDistanceMeters !== null && settings.maxDistanceMeters < 10) {
                 return res.status(400).json({ message: 'Minimum allowed distance is 10 meters' });
             }
@@ -133,7 +134,8 @@ const getPublicSettings = async (req, res) => {
             paymentQrImage: restaurant.settings?.paymentQrImage || '',
             paymentFlow: restaurant.settings?.paymentFlow || 'post',
             upiId: restaurant.settings?.upiId || '',
-            isOrderingEnabled: restaurant.settings?.isOrderingEnabled ?? true
+            isOrderingEnabled: restaurant.settings?.isOrderingEnabled ?? true,
+            isOrderNoteEnabled: restaurant.settings?.isOrderNoteEnabled ?? true
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

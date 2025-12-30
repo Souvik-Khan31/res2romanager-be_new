@@ -22,15 +22,13 @@ const registerRestaurant = async (req, res) => {
     } = req.body;
 
     try {
-        // Check if restaurant or user exists
         const userExists = await User.findOne({ email });
-        const restaurantExists = await Restaurant.findOne({ email }); // Using email as unique for restaurant contact too for now
+        const restaurantExists = await Restaurant.findOne({ email });
 
         if (userExists || restaurantExists) {
             return res.status(400).json({ message: 'User or Restaurant with this email already exists' });
         }
 
-        // Create Restaurant
         const restaurant = await Restaurant.create({
             name: restaurantName,
             ownerName,
@@ -40,13 +38,12 @@ const registerRestaurant = async (req, res) => {
             gstNumber
         });
 
-        // Create Admin User
         const sessionId = crypto.randomUUID();
         const user = await User.create({
             restaurantId: restaurant._id,
             name: ownerName,
             email,
-            username: email, // Default username is email for admin
+            username: email,
             password: password || crypto.randomBytes(16).toString('hex'),
             role: 'admin',
             phone,
@@ -72,12 +69,8 @@ const registerRestaurant = async (req, res) => {
 };
 
 // @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
 const loginUser = async (req, res) => {
     const { username, password } = req.body;
-    // Allow login with email OR username
-    // For admin, it's email. For staff, it's username.
 
     try {
         const user = await User.findOne({
@@ -85,6 +78,9 @@ const loginUser = async (req, res) => {
         });
 
         if (user && (await user.matchPassword(password))) {
+            if (user.isActive === false) {
+                return res.status(403).json({ message: 'Your account has been deactivated. Please contact the administrator.' });
+            }
             const restaurant = await Restaurant.findById(user.restaurantId);
 
             const sessionId = crypto.randomUUID();
@@ -110,10 +106,8 @@ const loginUser = async (req, res) => {
 };
 
 // @desc    Get current user profile
-// @route   GET /api/auth/profile
-// @access  Private
 const getProfile = async (req, res) => {
-    const user = await User.findById(req.user._id); // Details populated by middleware, but fetching fresh just in case
+    const user = await User.findById(req.user._id);
 
     if (user) {
         res.json({
@@ -128,8 +122,6 @@ const getProfile = async (req, res) => {
 };
 
 // @desc    Register a new Customer
-// @route   POST /api/auth/register-customer
-// @access  Public
 const registerCustomer = async (req, res) => {
     const { name, email, password, restaurantId } = req.body;
 
@@ -169,8 +161,6 @@ const registerCustomer = async (req, res) => {
 };
 
 // @desc    Google Login
-// @route   POST /api/auth/google-login
-// @access  Public
 const googleLogin = async (req, res) => {
     const { idToken, restaurantId, role: requestedRole } = req.body;
 
@@ -186,7 +176,6 @@ const googleLogin = async (req, res) => {
         let user = await User.findOne({ email });
 
         if (!user) {
-            // If user doesn't exist and it's a customer flow, create user automatically
             if (requestedRole === 'customer') {
                 const sessionId = crypto.randomUUID();
                 user = await User.create({
@@ -194,20 +183,23 @@ const googleLogin = async (req, res) => {
                     name,
                     email,
                     username: email,
-                    password: crypto.randomBytes(16).toString('hex'), // Random password for Google users
+                    password: crypto.randomBytes(16).toString('hex'),
                     role: 'customer',
                     currentSessionId: sessionId,
                     googleId
                 });
             } else {
-                // For other roles (admin, staff), return the Google info so they can register
                 return res.json({
                     newGoogleUser: true,
                     googleData: { email, name, picture, googleId }
                 });
             }
         } else {
-            // User exists, update Google ID if not set
+            // User exists
+            if (user.isActive === false) {
+                return res.status(403).json({ message: 'Your account has been deactivated. Please contact the administrator.' });
+            }
+
             if (!user.googleId) {
                 user.googleId = googleId;
             }

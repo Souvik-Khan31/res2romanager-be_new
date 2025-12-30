@@ -22,6 +22,7 @@ const orderSchema = new mongoose.Schema({
     customerPhone: { type: String },
 
     items: [orderItemSchema],
+    orderNote: { type: String },
 
     // Course-level status tracking for multi-course orders
     courseStatuses: [{

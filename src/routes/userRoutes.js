@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createStaff, getStaff, deleteStaff } = require('../controllers/userController');
+const { createStaff, getStaff, deleteStaff, updateStaff } = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 router.route('/')
@@ -8,6 +8,7 @@ router.route('/')
     .get(protect, authorize('admin'), getStaff);
 
 router.route('/:id')
+    .put(protect, authorize('admin'), updateStaff)
     .delete(protect, authorize('admin'), deleteStaff);
 
 module.exports = router;

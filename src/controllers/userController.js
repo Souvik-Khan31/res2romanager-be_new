@@ -45,7 +45,6 @@ const createStaff = async (req, res) => {
 // @access  Private/Admin
 const getStaff = async (req, res) => {
     try {
-        // Now fetching all users including other admins (except maybe the current one if we wanted, but let's show all)
         const users = await User.find({ restaurantId: req.user.restaurantId }).select('-password');
         res.json(users);
     } catch (error) {
@@ -64,12 +63,11 @@ const deleteStaff = async (req, res) => {
             return res.status(404).json({ message: 'Staff not found' });
         }
 
-        // Ensure user belongs to admin's restaurant
         if (user.restaurantId.toString() !== req.user.restaurantId.toString()) {
             return res.status(401).json({ message: 'Not authorized' });
         }
 
-        await user.deleteOne(); // or user.remove() depending on mongoose version
+        await user.deleteOne();
         res.json({ message: 'Staff removed' });
 
     } catch (error) {
@@ -77,4 +75,35 @@ const deleteStaff = async (req, res) => {
     }
 };
 
-module.exports = { createStaff, getStaff, deleteStaff };
+// @desc    Update staff status/details
+// @route   PUT /api/users/:id
+// @access  Private/Admin
+const updateStaff = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'Staff not found' });
+        }
+
+        if (user.restaurantId.toString() !== req.user.restaurantId.toString()) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        const { name, role, phone, email, isActive } = req.body;
+
+        if (name) user.name = name;
+        if (role) user.role = role;
+        if (phone) user.phone = phone;
+        if (email) user.email = email;
+        if (isActive !== undefined) user.isActive = isActive;
+
+        await user.save();
+        res.json(user);
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { createStaff, getStaff, deleteStaff, updateStaff };

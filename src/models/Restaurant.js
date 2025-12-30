@@ -80,6 +80,10 @@ const restaurantSchema = new mongoose.Schema({
             type: Boolean,
             default: false
         },
+        isOrderNoteEnabled: {
+            type: Boolean,
+            default: true
+        },
         maxDistanceMeters: {
             type: Number,
             default: 100
