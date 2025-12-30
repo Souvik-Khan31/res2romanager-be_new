@@ -46,6 +46,9 @@ const updateRestaurantSettings = async (req, res) => {
             restaurant.settings.upiId = settings.upiId ?? restaurant.settings.upiId;
             restaurant.settings.isOrderingEnabled = settings.isOrderingEnabled ?? restaurant.settings.isOrderingEnabled;
             restaurant.settings.geofencingEnabled = settings.geofencingEnabled ?? restaurant.settings.geofencingEnabled;
+            if (settings.maxDistanceMeters !== undefined && settings.maxDistanceMeters !== null && settings.maxDistanceMeters < 10) {
+                return res.status(400).json({ message: 'Minimum allowed distance is 10 meters' });
+            }
             restaurant.settings.maxDistanceMeters = settings.maxDistanceMeters ?? restaurant.settings.maxDistanceMeters;
             restaurant.settings.secretVersion = settings.secretVersion ?? restaurant.settings.secretVersion;
 
