@@ -9,6 +9,7 @@ const menuItemSchema = new mongoose.Schema({
     salePrice: { type: Number }, // Optional discounted price
     image: String,
     isAvailable: { type: Boolean, default: true }, // Out of Stock
+    isHidden: { type: Boolean, default: false }, // Hidden from customers
     type: { type: String, enum: ['veg', 'non-veg', 'egg'], default: 'veg' },
     subCategory: { type: String },
     courseType: { type: String, enum: ['starter', 'main-course', 'dessert', 'beverage', 'none'], default: 'none' }

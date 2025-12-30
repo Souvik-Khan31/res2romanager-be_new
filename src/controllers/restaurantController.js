@@ -44,6 +44,7 @@ const updateRestaurantSettings = async (req, res) => {
             restaurant.settings.customerLoginRequired = settings.customerLoginRequired ?? restaurant.settings.customerLoginRequired;
             restaurant.settings.paymentFlow = settings.paymentFlow ?? restaurant.settings.paymentFlow;
             restaurant.settings.upiId = settings.upiId ?? restaurant.settings.upiId;
+            restaurant.settings.isOrderingEnabled = settings.isOrderingEnabled ?? restaurant.settings.isOrderingEnabled;
 
             // Mark as modified to be safe
             restaurant.markModified('settings');
@@ -106,7 +107,7 @@ const uploadQrImage = async (req, res) => {
 // @access  Public
 const getPublicSettings = async (req, res) => {
     try {
-        const restaurant = await Restaurant.findById(req.params.id).select('name settings.customerLoginRequired settings.paymentQrImage settings.paymentFlow settings.upiId');
+        const restaurant = await Restaurant.findById(req.params.id).select('name settings.customerLoginRequired settings.paymentQrImage settings.paymentFlow settings.upiId settings.isOrderingEnabled');
 
         if (!restaurant) {
             return res.status(404).json({ message: 'Restaurant not found' });
@@ -118,7 +119,8 @@ const getPublicSettings = async (req, res) => {
             customerLoginRequired: restaurant.settings?.customerLoginRequired || false,
             paymentQrImage: restaurant.settings?.paymentQrImage || '',
             paymentFlow: restaurant.settings?.paymentFlow || 'post',
-            upiId: restaurant.settings?.upiId || ''
+            upiId: restaurant.settings?.upiId || '',
+            isOrderingEnabled: restaurant.settings?.isOrderingEnabled ?? true
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

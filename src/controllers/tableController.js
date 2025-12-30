@@ -1,4 +1,16 @@
 const Table = require('../models/Table');
+const Restaurant = require('../models/Restaurant');
+const crypto = require('crypto');
+
+const generateTableToken = (restaurantId, tableNumber, secretVersion) => {
+    // We use a simple HMAC with a static salt for now, in production use a per-restaurant secret
+    const salt = process.env.JWT_SECRET || 'resto-secure-salt';
+    return crypto
+        .createHmac('sha256', salt)
+        .update(`${restaurantId}:${tableNumber}:${secretVersion}`)
+        .digest('hex')
+        .substring(0, 16); // 16 chars is enough for this purpose
+};
 
 // @desc    Get all tables
 // @route   GET /api/tables
@@ -28,11 +40,13 @@ const createTable = async (req, res) => {
             return res.status(400).json({ message: 'Table number already exists' });
         }
 
-        // Construct the URL that the QR will point to. 
-        // In a real app, this should be the frontend URL.
-        // req.headers.origin gives the frontend origin usually.
+        // Fetch restaurant for secretVersion
+        const restaurant = await Restaurant.findById(req.user.restaurantId);
+        const secretVersion = restaurant.settings?.secretVersion || 1;
+
         const origin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:4200';
-        const qrUrl = `${origin}/menu/${req.user.restaurantId}/${tableNumber}`;
+        const token = generateTableToken(req.user.restaurantId, tableNumber, secretVersion);
+        const qrUrl = `${origin}/menu/${req.user.restaurantId}/${tableNumber}?t=${token}`;
 
         const table = await Table.create({
             restaurantId: req.user.restaurantId,

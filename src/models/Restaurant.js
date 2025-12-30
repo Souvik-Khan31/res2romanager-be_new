@@ -67,6 +67,26 @@ const restaurantSchema = new mongoose.Schema({
             type: String,
             enum: ['pre', 'post'],
             default: 'post'
+        },
+        isOrderingEnabled: {
+            type: Boolean,
+            default: true
+        },
+        location: {
+            latitude: Number,
+            longitude: Number
+        },
+        geofencingEnabled: {
+            type: Boolean,
+            default: false
+        },
+        maxDistanceMeters: {
+            type: Number,
+            default: 100
+        },
+        secretVersion: {
+            type: Number,
+            default: 1 // Increment to invalidate old QR codes
         }
     },
     logoUrl: {

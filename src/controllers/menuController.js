@@ -69,7 +69,7 @@ const getMenuItems = async (req, res) => {
 // @route   POST /api/menu/items
 // @access  Private/Admin
 const createMenuItem = async (req, res) => {
-    const { categoryId, name, description, price, salePrice, type, isAvailable } = req.body;
+    const { categoryId, name, description, price, salePrice, type, isAvailable, isHidden } = req.body;
     let imagePath = '';
 
     if (req.file) {
@@ -86,6 +86,7 @@ const createMenuItem = async (req, res) => {
             salePrice: salePrice || undefined,
             type,
             isAvailable: isAvailable !== undefined ? isAvailable : true,
+            isHidden: isHidden !== undefined ? isHidden : false,
             image: imagePath
         });
         res.status(201).json(item);
@@ -106,7 +107,7 @@ const updateMenuItem = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized' });
         }
 
-        const { categoryId, name, description, price, salePrice, type, isAvailable } = req.body;
+        const { categoryId, name, description, price, salePrice, type, isAvailable, isHidden } = req.body;
 
         item.name = name || item.name;
         item.description = description || item.description;
@@ -115,6 +116,7 @@ const updateMenuItem = async (req, res) => {
         item.type = type || item.type;
         if (categoryId) item.categoryId = categoryId;
         if (isAvailable !== undefined) item.isAvailable = isAvailable;
+        if (isHidden !== undefined) item.isHidden = isHidden;
 
         if (req.file) {
             // Optionally delete old image

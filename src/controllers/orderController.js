@@ -11,7 +11,7 @@ const { sendPushNotification } = require('../services/pushService');
 // @route   POST /api/orders
 // @access  Public (Customer)
 const placeOrder = async (req, res) => {
-    const { restaurantId, tableNumber, tableId, orderType, items, advanceRequired, advanceAmount } = req.body;
+    const { restaurantId, tableNumber, tableId, orderType, items, advanceRequired, advanceAmount, tableToken, customerLocation } = req.body;
 
     if (!items || items.length === 0) {
         return res.status(400).json({ message: 'No items in order' });
@@ -23,6 +23,71 @@ const placeOrder = async (req, res) => {
 
         if (!restaurant) {
             return res.status(404).json({ message: 'Restaurant not found' });
+        }
+
+        // Check if ordering is enabled
+        if (restaurant.settings?.isOrderingEnabled === false) {
+            return res.status(403).json({
+                message: 'Ordering is currently paused by the restaurant.',
+                isOrderingDisabled: true
+            });
+        }
+
+        // Table Token Verification (Anti-IDOR)
+        if (orderType === 'dine-in' || tableNumber) {
+            const crypto = require('crypto');
+            const salt = process.env.JWT_SECRET || 'resto-secure-salt';
+            const secretVersion = restaurant.settings?.secretVersion || 1;
+            const expectedToken = crypto
+                .createHmac('sha256', salt)
+                .update(`${restaurantId}:${tableNumber}:${secretVersion}`)
+                .digest('hex')
+                .substring(0, 16);
+
+            if (tableToken !== expectedToken) {
+                return res.status(403).json({
+                    message: 'Invalid table link. Please scan the QR code again.',
+                    invalidToken: true
+                });
+            }
+        }
+
+        // Geofencing Check
+        if (restaurant.settings?.geofencingEnabled && restaurant.settings?.location?.latitude) {
+            if (!customerLocation || !customerLocation.latitude || !customerLocation.longitude) {
+                return res.status(403).json({
+                    message: 'Location access is required to place an order at this restaurant.',
+                    locationRequired: true
+                });
+            }
+
+            const getDistance = (lat1, lon1, lat2, lon2) => {
+                const R = 6371e3; // metres
+                const φ1 = lat1 * Math.PI / 180;
+                const φ2 = lat2 * Math.PI / 180;
+                const Δφ = (lat2 - lat1) * Math.PI / 180;
+                const Δλ = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                    Math.cos(φ1) * Math.cos(φ2) *
+                    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+            };
+
+            const distance = getDistance(
+                restaurant.settings.location.latitude,
+                restaurant.settings.location.longitude,
+                customerLocation.latitude,
+                customerLocation.longitude
+            );
+
+            if (distance > (restaurant.settings.maxDistanceMeters || 100)) {
+                return res.status(403).json({
+                    message: 'You must be at the restaurant to place an order.',
+                    tooFar: true,
+                    distance: Math.round(distance)
+                });
+            }
         }
 
         // Check if customer login is required
