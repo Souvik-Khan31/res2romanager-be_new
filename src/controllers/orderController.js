@@ -355,10 +355,12 @@ const markOrderAsPaid = async (req, res) => {
         const { orderId } = req.params;
         const restaurantId = req.user.restaurantId;
 
-        // 1. Check if waiter payment is enabled for this restaurant
-        const restaurant = await Restaurant.findById(restaurantId);
-        if (!restaurant || !restaurant.settings?.waiterPaymentEnabled) {
-            return res.status(403).json({ message: 'Waiter payment is not enabled for this restaurant' });
+        // 1. Check if waiter payment is enabled (only for waiter role, admin can always collect)
+        if (req.user.role === 'waiter') {
+            const restaurant = await Restaurant.findById(restaurantId);
+            if (!restaurant || !restaurant.settings?.waiterPaymentEnabled) {
+                return res.status(403).json({ message: 'Waiter payment is not enabled for this restaurant' });
+            }
         }
 
         // 2. Find and update the order

@@ -214,9 +214,57 @@ const getRestaurantInfo = async (req, res) => {
     }
 };
 
+// @desc    Update Category
+// @route   PUT /api/menu/categories/:id
+// @access  Private/Admin
+const updateCategory = async (req, res) => {
+    try {
+        const category = await MenuCategory.findById(req.params.id);
+        if (!category) return res.status(404).json({ message: 'Category not found' });
+
+        if (category.restaurantId.toString() !== req.user.restaurantId.toString()) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        const { name, description } = req.body;
+        category.name = name || category.name;
+        category.description = description || category.description;
+
+        const updatedCategory = await category.save();
+        res.json(updatedCategory);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Delete Category
+// @route   DELETE /api/menu/categories/:id
+// @access  Private/Admin
+const deleteCategory = async (req, res) => {
+    try {
+        const category = await MenuCategory.findById(req.params.id);
+        if (!category) return res.status(404).json({ message: 'Category not found' });
+
+        if (category.restaurantId.toString() !== req.user.restaurantId.toString()) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        // Optional: Delete all items in this category or let the frontend warn the user
+        // The frontend warns "Deleting it will also delete all items", so we should clean up items.
+        await MenuItem.deleteMany({ categoryId: category._id });
+
+        await category.deleteOne();
+        res.json({ message: 'Category removed' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getCategories,
     createCategory,
+    updateCategory,
+    deleteCategory,
     getMenuItems,
     createMenuItem,
     updateMenuItem,

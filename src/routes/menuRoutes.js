@@ -3,6 +3,8 @@ const router = express.Router();
 const {
     getCategories,
     createCategory,
+    updateCategory,
+    deleteCategory,
     getMenuItems,
     createMenuItem,
     updateMenuItem,
@@ -29,6 +31,10 @@ router.route('/cover-image')
 router.route('/categories')
     .get(getCategories) // Public/Private
     .post(protect, authorize('admin'), createCategory);
+
+router.route('/categories/:id')
+    .put(protect, authorize('admin'), updateCategory)
+    .delete(protect, authorize('admin'), deleteCategory);
 
 // Items (100 KB limit for menu item images, auto-convert to WebP handled by Cloudinary)
 router.route('/items')
