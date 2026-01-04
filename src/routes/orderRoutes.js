@@ -4,6 +4,7 @@ const { placeOrder, getOrders, updateOrderStatus, getOrderById, updateCourseStat
 const { protect } = require('../middleware/authMiddleware');
 
 router.post('/', placeOrder); // Public
+router.post('/staff', protect, placeOrder); // Protected (Staff/Admin)
 router.get('/:id', getOrderById); // Public Tracking
 router.get('/', protect, getOrders);
 router.put('/:id/status', protect, updateOrderStatus);

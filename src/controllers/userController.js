@@ -12,9 +12,10 @@ const createStaff = async (req, res) => {
     }
 
     try {
-        const userExists = await User.findOne({ username, restaurantId: req.user.restaurantId });
+        // Check if username exists globally (across all restaurants)
+        const userExists = await User.findOne({ username });
         if (userExists) {
-            return res.status(400).json({ message: 'Username already exists for this restaurant' });
+            return res.status(400).json({ message: 'Username already exists. Please choose a different username.' });
         }
 
         const user = await User.create({
@@ -35,6 +36,23 @@ const createStaff = async (req, res) => {
                 role: user.role
             });
         }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Check if username is available
+// @route   GET /api/users/check-username/:username
+// @access  Private/Admin
+const checkUsernameAvailability = async (req, res) => {
+    try {
+        const { username } = req.params;
+        const userExists = await User.findOne({ username });
+
+        res.json({
+            available: !userExists,
+            message: userExists ? 'Username already exists' : 'Username is available'
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -106,4 +124,4 @@ const updateStaff = async (req, res) => {
     }
 };
 
-module.exports = { createStaff, getStaff, deleteStaff, updateStaff };
+module.exports = { createStaff, getStaff, deleteStaff, updateStaff, checkUsernameAvailability };

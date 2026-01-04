@@ -31,18 +31,14 @@ const restaurantSchema = new mongoose.Schema({
         default: 'Delicious cuisine crafted with passion'
     },
     settings: {
-        serviceChargePercentage: {
-            type: Number,
-            default: 0
-        },
-        gstPercentage: {
-            type: Number,
-            default: 0
-        },
-        enableServiceCharge: {
-            type: Boolean,
-            default: false
-        },
+        additionalCharges: [{
+            name: { type: String, required: true },
+            type: { type: String, enum: ['percent', 'fixed'], default: 'percent' },
+            value: { type: Number, required: true, default: 0 },
+            applicableTo: { type: String, enum: ['all', 'dine-in', 'takeaway'], default: 'all' },
+            isOptional: { type: Boolean, default: false },
+            isEnabled: { type: Boolean, default: true }
+        }],
         currency: {
             type: String,
             default: 'USD' // Customizable
@@ -87,6 +83,14 @@ const restaurantSchema = new mongoose.Schema({
         maxDistanceMeters: {
             type: Number,
             default: 100
+        },
+        isTakeawayChargeEnabled: {
+            type: Boolean,
+            default: false
+        },
+        takeawayCharge: {
+            type: Number,
+            default: 0
         },
         secretVersion: {
             type: Number,

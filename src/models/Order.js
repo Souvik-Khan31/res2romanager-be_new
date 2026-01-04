@@ -34,11 +34,18 @@ const orderSchema = new mongoose.Schema({
     billAmount: { type: Number, required: true }, // Subtotal
     taxAmount: { type: Number, default: 0 },
     serviceChargeAmount: { type: Number, default: 0 },
+    packagingCharge: { type: Number, default: 0 },
+    appliedCharges: [{
+        name: String,
+        chargeType: String, // Renamed from 'type' to avoid Mongoose collision
+        value: Number,
+        amount: Number
+    }],
     totalAmount: { type: Number, required: true }, // Final
 
     status: {
         type: String,
-        enum: ['pending-payment', 'placed', 'accepted', 'rejected', 'preparing', 'ready', 'served', 'completed', 'cancelled'],
+        enum: ['placed', 'preparing', 'ready', 'served', 'completed', 'cancelled'],
         default: 'placed'
     },
 
@@ -63,6 +70,8 @@ const orderSchema = new mongoose.Schema({
         }
     ],
     waiterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    servedBy: { type: String }, // Name of the staff who served/delivered the order
+    servedAt: { type: Date },
 
     // Ratings & Feedback
     foodRating: { type: Number, max: 5, default: 0 },

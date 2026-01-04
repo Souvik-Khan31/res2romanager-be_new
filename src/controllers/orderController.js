@@ -33,8 +33,9 @@ const placeOrder = async (req, res) => {
             });
         }
 
-        // Table Token Verification (Anti-IDOR)
-        if (orderType === 'dine-in' || tableNumber) {
+        // Table Token Verification (Anti-IDOR) - Skip for Staff/App
+        // If req.user exists, it means they passed the 'protect' middleware (Admin/Staff)
+        if (!req.user && (orderType === 'dine-in' || tableNumber)) {
             const crypto = require('crypto');
             const salt = process.env.JWT_SECRET || 'resto-secure-salt';
             const secretVersion = restaurant.settings?.secretVersion || 1;
@@ -167,17 +168,43 @@ const placeOrder = async (req, res) => {
 
         // Restaurant already fetched above for login check
         // Fetch Restaurant Settings for Tax
-        let taxAmount = 0;
-        let serviceChargeAmount = 0;
+        // Calculate Additional Charges
+        let totalAdditionalCharges = 0;
+        const appliedCharges = [];
 
-        if (restaurant.settings.gstPercentage > 0) {
-            taxAmount = (billAmount * restaurant.settings.gstPercentage) / 100;
-        }
-        if (restaurant.settings.enableServiceCharge && restaurant.settings.serviceChargePercentage > 0) {
-            serviceChargeAmount = (billAmount * restaurant.settings.serviceChargePercentage) / 100;
+        if (restaurant.settings.additionalCharges && Array.isArray(restaurant.settings.additionalCharges)) {
+            restaurant.settings.additionalCharges.forEach(charge => {
+                if (charge.isEnabled) {
+                    // Check applicability
+                    if (charge.applicableTo === 'dine-in' && orderType !== 'dine-in') return;
+                    if (charge.applicableTo === 'takeaway' && orderType !== 'takeaway') return;
+
+                    let amount = 0;
+                    if (charge.type === 'percent') {
+                        amount = (billAmount * charge.value) / 100;
+                    } else {
+                        amount = charge.value;
+                    }
+                    totalAdditionalCharges += amount;
+                    appliedCharges.push({
+                        name: charge.name,
+                        chargeType: charge.type, // Map 'type' from settings to 'chargeType' in order
+                        value: charge.value,
+                        amount: amount
+                    });
+                }
+            });
         }
 
-        const totalAmount = billAmount + taxAmount + serviceChargeAmount;
+        // Apply Takeaway/Packaging Charge
+        let packagingChargeAmount = 0;
+        if (orderType === 'takeaway' && restaurant.settings?.isTakeawayChargeEnabled && restaurant.settings?.takeawayCharge > 0) {
+            packagingChargeAmount = restaurant.settings.takeawayCharge;
+            // Add to applied charges for consistency? Or keep separate as it's conditional?
+            // Keeping separate in schema, but total includes it.
+        }
+
+        const totalAmount = billAmount + totalAdditionalCharges + packagingChargeAmount;
 
         // NEW: Check payment flow setting for initial status
         const paymentFlow = restaurant.settings?.paymentFlow || 'post';
@@ -186,13 +213,15 @@ const placeOrder = async (req, res) => {
         const order = new Order({
             restaurantId,
             tableId,
-            tableNumber,
+            tableNumber: orderType === 'takeaway' ? 'TK' : tableNumber,
             orderType,
             items: orderItems,
             orderNote,
             billAmount,
-            taxAmount,
-            serviceChargeAmount,
+            taxAmount: 0, // Legacy field
+            serviceChargeAmount: 0, // Legacy field
+            appliedCharges, // NEW: Detailed breakdown
+            packagingCharge: packagingChargeAmount,
             totalAmount,
             status: initialStatus,
             advanceRequired: advanceRequired || false,
@@ -316,6 +345,10 @@ const updateOrderStatus = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized' });
         }
 
+        if (status === 'completed' && order.paymentStatus !== 'paid') {
+            return res.status(400).json({ message: 'Order cannot be completed until payment is received.' });
+        }
+
         order.status = status;
 
         // Add to timeline
@@ -323,6 +356,11 @@ const updateOrderStatus = async (req, res) => {
             status,
             user: userName || req.user.name || req.user.role
         });
+
+        if (status === 'served') {
+            order.servedBy = userName || req.user.name || req.user.role;
+            order.servedAt = new Date();
+        }
 
         if (status === 'completed' && order.paymentStatus === 'pending') {
             // Optional: Auto-mark paid? Or keep separate?
@@ -438,6 +476,8 @@ const updateCourseStatus = async (req, res) => {
                 status: 'served',
                 user: req.user.name || req.user.role
             });
+            order.servedBy = req.user.name || req.user.role;
+            order.servedAt = new Date();
         }
         // If any course is preparing, update overall status
         else if (status === 'preparing' && order.status === 'placed') {

@@ -47,6 +47,19 @@ const updateRestaurantSettings = async (req, res) => {
             restaurant.settings.isOrderingEnabled = settings.isOrderingEnabled ?? restaurant.settings.isOrderingEnabled;
             restaurant.settings.geofencingEnabled = settings.geofencingEnabled ?? restaurant.settings.geofencingEnabled;
             restaurant.settings.isOrderNoteEnabled = settings.isOrderNoteEnabled ?? restaurant.settings.isOrderNoteEnabled;
+
+            // Tax and Takeaway Settings
+            // OLD Fields removed in favor of additionalCharges, but keeping for safety if needed or just replace logic
+            // restaurant.settings.gstPercentage = ... 
+
+            if (settings.additionalCharges) {
+                // Validate if needed, or just replace array
+                restaurant.settings.additionalCharges = settings.additionalCharges;
+            }
+
+            restaurant.settings.isTakeawayChargeEnabled = settings.isTakeawayChargeEnabled ?? restaurant.settings.isTakeawayChargeEnabled;
+            restaurant.settings.takeawayCharge = settings.takeawayCharge ?? restaurant.settings.takeawayCharge;
+
             if (settings.maxDistanceMeters !== undefined && settings.maxDistanceMeters !== null && settings.maxDistanceMeters < 10) {
                 return res.status(400).json({ message: 'Minimum allowed distance is 10 meters' });
             }
@@ -121,7 +134,7 @@ const uploadQrImage = async (req, res) => {
 // @access  Public
 const getPublicSettings = async (req, res) => {
     try {
-        const restaurant = await Restaurant.findById(req.params.id).select('name settings.customerLoginRequired settings.paymentQrImage settings.paymentFlow settings.upiId settings.isOrderingEnabled');
+        const restaurant = await Restaurant.findById(req.params.id);
 
         if (!restaurant) {
             return res.status(404).json({ message: 'Restaurant not found' });
@@ -135,7 +148,10 @@ const getPublicSettings = async (req, res) => {
             paymentFlow: restaurant.settings?.paymentFlow || 'post',
             upiId: restaurant.settings?.upiId || '',
             isOrderingEnabled: restaurant.settings?.isOrderingEnabled ?? true,
-            isOrderNoteEnabled: restaurant.settings?.isOrderNoteEnabled ?? true
+            isOrderNoteEnabled: restaurant.settings?.isOrderNoteEnabled ?? true,
+            isTakeawayChargeEnabled: restaurant.settings?.isTakeawayChargeEnabled || false,
+            takeawayCharge: restaurant.settings?.takeawayCharge || 0,
+            additionalCharges: restaurant.settings?.additionalCharges || []
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
