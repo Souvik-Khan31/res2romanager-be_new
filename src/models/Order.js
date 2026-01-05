@@ -49,7 +49,7 @@ const orderSchema = new mongoose.Schema({
         default: 'placed'
     },
 
-    paymentStatus: { type: String, enum: ['pending', 'paid'], default: 'pending' },
+    paymentStatus: { type: String, enum: ['pending', 'paid', 'cancelled'], default: 'pending' },
     paymentMode: { type: String, enum: ['cash', 'online', 'upi'] },
 
     // PhonePe specific fields

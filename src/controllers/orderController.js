@@ -270,13 +270,22 @@ const getOrders = async (req, res) => {
         filter.status = status;
     }
 
-    // Date filter logic (Move up so we can use it in $or if needed, or just apply to entire query)
+    // Date filter logic
     if (date === 'today') {
         const start = new Date();
         start.setHours(0, 0, 0, 0);
         const end = new Date();
         end.setHours(23, 59, 59, 999);
         filter.createdAt = { $gte: start, $lte: end };
+    } else if (date) {
+        // Handle specific date YYYY-MM-DD
+        const start = new Date(date);
+        if (!isNaN(start.getTime())) {
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(date);
+            end.setHours(23, 59, 59, 999);
+            filter.createdAt = { $gte: start, $lte: end };
+        }
     }
 
     if (waiterId && waiterId !== 'undefined' && waiterId !== '') {
@@ -362,6 +371,13 @@ const updateOrderStatus = async (req, res) => {
             order.servedAt = new Date();
         }
 
+        if (status === 'cancelled') {
+            const currentPaymentStatus = (order.paymentStatus || 'pending').toLowerCase();
+            if (currentPaymentStatus === 'pending') {
+                order.paymentStatus = 'cancelled';
+            }
+        }
+
         if (status === 'completed' && order.paymentStatus === 'pending') {
             // Optional: Auto-mark paid? Or keep separate?
         }
@@ -412,6 +428,11 @@ const markOrderAsPaid = async (req, res) => {
         // If already paid
         if (order.paymentStatus === 'paid') {
             return res.status(400).json({ message: 'Order is already paid' });
+        }
+
+        // Prevent payment collection on cancelled orders
+        if (order.status === 'cancelled' || order.paymentStatus === 'cancelled') {
+            return res.status(400).json({ message: 'Cannot collect payment for a cancelled order' });
         }
 
         order.paymentStatus = 'paid';
