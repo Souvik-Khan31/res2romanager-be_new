@@ -124,4 +124,27 @@ const updateStaff = async (req, res) => {
     }
 };
 
-module.exports = { createStaff, getStaff, deleteStaff, updateStaff, checkUsernameAvailability };
+// @desc    Get all customers (for Admin/Super-Admin)
+// @route   GET /api/users/customers
+// @access  Private/Admin
+const getCustomers = async (req, res) => {
+    try {
+        let query = { role: 'customer' };
+
+        // If not super-admin, filter by restaurantId
+        if (req.user.role !== 'super-admin') {
+            query.restaurantId = req.user.restaurantId;
+        }
+
+        const customers = await User.find(query)
+            .populate('restaurantId', 'name')
+            .select('-password')
+            .sort({ createdAt: -1 });
+
+        res.json(customers);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { createStaff, getStaff, deleteStaff, updateStaff, checkUsernameAvailability, getCustomers };

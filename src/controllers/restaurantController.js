@@ -47,6 +47,7 @@ const updateRestaurantSettings = async (req, res) => {
             restaurant.settings.isOrderingEnabled = settings.isOrderingEnabled ?? restaurant.settings.isOrderingEnabled;
             restaurant.settings.geofencingEnabled = settings.geofencingEnabled ?? restaurant.settings.geofencingEnabled;
             restaurant.settings.isOrderNoteEnabled = settings.isOrderNoteEnabled ?? restaurant.settings.isOrderNoteEnabled;
+            restaurant.settings.qrMenuMode = settings.qrMenuMode ?? restaurant.settings.qrMenuMode;
 
             // Tax and Takeaway Settings
             // OLD Fields removed in favor of additionalCharges, but keeping for safety if needed or just replace logic
@@ -151,6 +152,7 @@ const getPublicSettings = async (req, res) => {
             isOrderNoteEnabled: restaurant.settings?.isOrderNoteEnabled ?? true,
             isTakeawayChargeEnabled: restaurant.settings?.isTakeawayChargeEnabled || false,
             takeawayCharge: restaurant.settings?.takeawayCharge || 0,
+            qrMenuMode: restaurant.settings?.qrMenuMode || 'order',
             additionalCharges: restaurant.settings?.additionalCharges || []
         });
     } catch (error) {

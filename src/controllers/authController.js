@@ -58,6 +58,7 @@ const registerRestaurant = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 restaurantId: user.restaurantId,
+                subscription: restaurant.subscription,
                 token: generateToken(user._id, sessionId),
             });
         } else {
@@ -95,6 +96,7 @@ const loginUser = async (req, res) => {
                 role: user.role,
                 restaurantId: user.restaurantId,
                 restaurantName: restaurant ? restaurant.name : 'Unknown',
+                subscription: restaurant ? restaurant.subscription : null,
                 token: generateToken(user._id, sessionId),
             });
         } else {
@@ -219,6 +221,7 @@ const googleLogin = async (req, res) => {
             role: user.role,
             restaurantId: user.restaurantId,
             restaurantName: restaurant ? restaurant.name : 'Unknown',
+            subscription: restaurant ? restaurant.subscription : null,
             token: generateToken(user._id, user.currentSessionId),
         });
     } catch (error) {

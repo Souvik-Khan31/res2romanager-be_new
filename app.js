@@ -26,6 +26,7 @@ app.use('/api/analytics', require('./src/routes/analyticsRoutes'));
 app.use('/api/restaurants', require('./src/routes/restaurantRoutes'));
 app.use('/api/phonepe', require('./src/routes/phonepeRoutes'));
 app.use('/api/push', require('./src/routes/pushRoutes'));
+app.use('/api/super-admin', require('./src/routes/superAdminRoutes'));
 
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', timestamp: new Date() }));
 app.get('/', (req, res) => res.send('Restaurant SaaS API Running'));

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Restaurant = require('../models/Restaurant');
 
 const protect = async (req, res, next) => {
     let token;
@@ -23,6 +24,19 @@ const protect = async (req, res, next) => {
             if (['admin', 'cook', 'waiter'].includes(req.user.role)) {
                 if (!decoded.sessionId || decoded.sessionId !== req.user.currentSessionId) {
                     return res.status(401).json({ message: 'Session expired, please login again from this device' });
+                }
+
+                // Check if restaurant is blocked or expired
+                const restaurant = await Restaurant.findById(req.user.restaurantId);
+                if (restaurant) {
+                    if (restaurant.isBlocked) {
+                        return res.status(403).json({ message: 'This restaurant account is currently suspended. Please contact support.' });
+                    }
+
+                    // Block mutation requests if subscription is expired
+                    if (restaurant.subscription?.status === 'expired' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+                        return res.status(403).json({ message: 'Subscription expired. Please refill to continue using this feature.' });
+                    }
                 }
             }
 

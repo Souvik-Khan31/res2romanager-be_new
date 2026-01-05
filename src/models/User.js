@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
     restaurantId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Restaurant',
-        required: true
+        required: function () { return this.role !== 'super-admin'; }
     },
     name: {
         type: String,
@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['admin', 'cook', 'waiter', 'customer'],
+        enum: ['super-admin', 'admin', 'cook', 'waiter', 'customer'],
         default: 'waiter'
     },
     phone: {

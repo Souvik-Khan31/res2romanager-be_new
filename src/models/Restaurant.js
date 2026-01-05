@@ -68,6 +68,11 @@ const restaurantSchema = new mongoose.Schema({
             type: Boolean,
             default: true
         },
+        qrMenuMode: {
+            type: String,
+            enum: ['order', 'browse'],
+            default: 'order'
+        },
         location: {
             latitude: Number,
             longitude: Number
@@ -102,6 +107,25 @@ const restaurantSchema = new mongoose.Schema({
     },
     coverImage: {
         type: String
+    },
+    subscription: {
+        status: {
+            type: String,
+            enum: ['active', 'expired', 'trial'],
+            default: 'trial'
+        },
+        expireAt: {
+            type: Date,
+            default: () => new Date(+new Date() + 14 * 24 * 60 * 60 * 1000) // 14 days trial
+        },
+        plan: {
+            type: String,
+            default: 'free'
+        }
+    },
+    isBlocked: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true });
 
