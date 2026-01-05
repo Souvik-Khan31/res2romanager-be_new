@@ -277,6 +277,9 @@ const getOrders = async (req, res) => {
         const end = new Date();
         end.setHours(23, 59, 59, 999);
         filter.createdAt = { $gte: start, $lte: end };
+    } else if (date === 'last24h') {
+        const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        filter.createdAt = { $gte: last24h };
     } else if (date) {
         // Handle specific date YYYY-MM-DD
         const start = new Date(date);
@@ -286,6 +289,10 @@ const getOrders = async (req, res) => {
             end.setHours(23, 59, 59, 999);
             filter.createdAt = { $gte: start, $lte: end };
         }
+    } else if (!date && (req.user.role === 'cook' || req.user.role === 'waiter')) {
+        // Default for staff if no date is specified
+        const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        filter.createdAt = { $gte: last24h };
     }
 
     if (waiterId && waiterId !== 'undefined' && waiterId !== '') {
