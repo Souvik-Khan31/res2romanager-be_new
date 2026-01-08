@@ -264,8 +264,13 @@ const deleteCategory = async (req, res) => {
 // @route   POST /api/menu/bulk-import
 // @access  Private/Admin
 const bulkImportMenuItems = async (req, res) => {
-    const { data } = req.body;
-    const restaurantId = req.user.restaurantId;
+    const { data, targetRestaurantId } = req.body;
+    let restaurantId = req.user.restaurantId;
+
+    // If super-admin, allow overriding restaurantId
+    if (req.user.role === 'super-admin' && targetRestaurantId) {
+        restaurantId = targetRestaurantId;
+    }
 
     if (!Array.isArray(data)) {
         return res.status(400).json({ message: 'Invalid data format. Expected an array of categories.' });

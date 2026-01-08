@@ -48,6 +48,6 @@ router.route('/items/:id')
 
 // Bulk Import
 router.route('/bulk-import')
-    .post(protect, authorize('admin'), bulkImportMenuItems);
+    .post(protect, authorize('super-admin'), bulkImportMenuItems);
 
 module.exports = router;
