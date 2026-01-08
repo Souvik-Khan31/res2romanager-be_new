@@ -10,7 +10,8 @@ const {
     updateMenuItem,
     deleteMenuItem,
     uploadCoverImage,
-    getRestaurantInfo
+    getRestaurantInfo,
+    bulkImportMenuItems
 } = require('../controllers/menuController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { uploadMenuItem, uploadCoverImage: uploadCoverImageMiddleware } = require('../middleware/uploadMiddleware');
@@ -44,5 +45,9 @@ router.route('/items')
 router.route('/items/:id')
     .put(protect, authorize('admin'), uploadMenuItem.single('image'), updateMenuItem)
     .delete(protect, authorize('admin'), deleteMenuItem);
+
+// Bulk Import
+router.route('/bulk-import')
+    .post(protect, authorize('admin'), bulkImportMenuItems);
 
 module.exports = router;

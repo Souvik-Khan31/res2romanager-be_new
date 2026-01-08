@@ -260,6 +260,89 @@ const deleteCategory = async (req, res) => {
     }
 };
 
+// @desc    Bulk Import Categories and Items
+// @route   POST /api/menu/bulk-import
+// @access  Private/Admin
+const bulkImportMenuItems = async (req, res) => {
+    const { data } = req.body;
+    const restaurantId = req.user.restaurantId;
+
+    if (!Array.isArray(data)) {
+        return res.status(400).json({ message: 'Invalid data format. Expected an array of categories.' });
+    }
+
+    try {
+        const results = {
+            categoriesCreated: 0,
+            itemsCreated: 0,
+            itemsUpdated: 0
+        };
+
+        for (const catData of data) {
+            // 1. Find or Create Category
+            let category = await MenuCategory.findOne({
+                restaurantId,
+                name: catData.categoryName
+            });
+
+            if (!category) {
+                category = await MenuCategory.create({
+                    restaurantId,
+                    name: catData.categoryName,
+                    description: catData.description || '',
+                    image: catData.image || ''
+                });
+                results.categoriesCreated++;
+            } else if (catData.image && category.image !== catData.image) {
+                // Update image if it changed and is provided
+                category.image = catData.image;
+                await category.save();
+            }
+
+            // 2. Process Items
+            for (const itemData of catData.items) {
+                let item = await MenuItem.findOne({
+                    restaurantId,
+                    name: itemData.name,
+                    categoryId: category._id
+                });
+
+                if (item) {
+                    item.price = itemData.price;
+                    item.description = itemData.description;
+                    item.type = itemData.type || 'veg';
+                    item.subCategory = itemData.subCategory || '';
+                    item.courseType = itemData.courseType || 'none';
+                    item.image = itemData.image;
+                    await item.save();
+                    results.itemsUpdated++;
+                } else {
+                    await MenuItem.create({
+                        restaurantId,
+                        categoryId: category._id,
+                        name: itemData.name,
+                        description: itemData.description,
+                        price: itemData.price,
+                        type: itemData.type || 'veg',
+                        subCategory: itemData.subCategory || '',
+                        courseType: itemData.courseType || 'none',
+                        image: itemData.image
+                    });
+                    results.itemsCreated++;
+                }
+            }
+        }
+
+        res.json({
+            message: 'Bulk import completed',
+            results
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getCategories,
     createCategory,
@@ -270,5 +353,6 @@ module.exports = {
     updateMenuItem,
     deleteMenuItem,
     uploadCoverImage,
-    getRestaurantInfo
+    getRestaurantInfo,
+    bulkImportMenuItems
 };
