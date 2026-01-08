@@ -35,7 +35,7 @@ const restaurantSchema = new mongoose.Schema({
             name: { type: String, required: true },
             type: { type: String, enum: ['percent', 'fixed'], default: 'percent' },
             value: { type: Number, required: true, default: 0 },
-            applicableTo: { type: String, enum: ['all', 'dine-in', 'takeaway'], default: 'all' },
+            applicableTo: { type: String, enum: ['all', 'dine-in', 'takeaway', 'online'], default: 'all' },
             isOptional: { type: Boolean, default: false },
             isEnabled: { type: Boolean, default: true }
         }],
@@ -96,6 +96,17 @@ const restaurantSchema = new mongoose.Schema({
         takeawayCharge: {
             type: Number,
             default: 0
+        },
+        // Online Ordering Settings
+        onlineOrdering: {
+            isEnabled: { type: Boolean, default: false },
+            deliveryFee: { type: Number, default: 0 },
+            minOrderAmount: { type: Number, default: 0 },
+            packagingFee: { type: Number, default: 0 },
+            deliveryRadiusMeters: { type: Number, default: 5000 },
+            loginRequired: { type: Boolean, default: true },
+            locationRequired: { type: Boolean, default: true },
+            autoKOT: { type: Boolean, default: false }
         },
         secretVersion: {
             type: Number,

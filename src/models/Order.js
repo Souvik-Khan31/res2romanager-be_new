@@ -15,11 +15,21 @@ const orderSchema = new mongoose.Schema({
     restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: true },
     tableId: { type: mongoose.Schema.Types.ObjectId, ref: 'Table' }, // Nullable if takeaway from ongoing counter?
     tableNumber: { type: String }, // Snapshot for easy display
-    orderType: { type: String, enum: ['dine-in', 'takeaway'], required: true },
+    orderType: { type: String, enum: ['dine-in', 'takeaway', 'online-delivery'], required: true },
 
     // Customer Details
     customerName: { type: String },
     customerPhone: { type: String },
+
+    // Delivery Details (New)
+    deliveryDetails: {
+        address: { type: String },
+        pincode: { type: String },
+        landmark: { type: String },
+        city: { type: String },
+        latitude: { type: Number },
+        longitude: { type: Number }
+    },
 
     items: [orderItemSchema],
     orderNote: { type: String },
@@ -45,7 +55,7 @@ const orderSchema = new mongoose.Schema({
 
     status: {
         type: String,
-        enum: ['placed', 'preparing', 'ready', 'served', 'completed', 'cancelled'],
+        enum: ['placed', 'preparing', 'ready', 'served', 'packed', 'dispatched', 'delivered', 'completed', 'cancelled'],
         default: 'placed'
     },
 
@@ -70,8 +80,12 @@ const orderSchema = new mongoose.Schema({
         }
     ],
     waiterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    servedBy: { type: String }, // Name of the staff who served/delivered the order
+    deliveryBoyId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    packerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    servedBy: { type: String }, // Name of the staff who served/delivered/packed the order
     servedAt: { type: Date },
+    dispatchedAt: { type: Date },
+    packedAt: { type: Date },
 
     // Ratings & Feedback
     foodRating: { type: Number, max: 5, default: 0 },

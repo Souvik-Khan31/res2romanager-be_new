@@ -67,6 +67,19 @@ const updateRestaurantSettings = async (req, res) => {
             restaurant.settings.maxDistanceMeters = settings.maxDistanceMeters ?? restaurant.settings.maxDistanceMeters;
             restaurant.settings.secretVersion = settings.secretVersion ?? restaurant.settings.secretVersion;
 
+            if (settings.onlineOrdering) {
+                restaurant.settings.onlineOrdering = {
+                    isEnabled: settings.onlineOrdering.isEnabled ?? restaurant.settings.onlineOrdering?.isEnabled,
+                    deliveryFee: settings.onlineOrdering.deliveryFee ?? restaurant.settings.onlineOrdering?.deliveryFee,
+                    minOrderAmount: settings.onlineOrdering.minOrderAmount ?? restaurant.settings.onlineOrdering?.minOrderAmount,
+                    packagingFee: settings.onlineOrdering.packagingFee ?? restaurant.settings.onlineOrdering?.packagingFee,
+                    deliveryRadiusMeters: settings.onlineOrdering.deliveryRadiusMeters ?? restaurant.settings.onlineOrdering?.deliveryRadiusMeters,
+                    loginRequired: settings.onlineOrdering.loginRequired ?? restaurant.settings.onlineOrdering?.loginRequired,
+                    locationRequired: settings.onlineOrdering.locationRequired ?? restaurant.settings.onlineOrdering?.locationRequired,
+                    autoKOT: settings.onlineOrdering.autoKOT ?? restaurant.settings.onlineOrdering?.autoKOT
+                };
+            }
+
             if (settings.location) {
                 restaurant.settings.location = {
                     latitude: settings.location.latitude ?? restaurant.settings.location?.latitude,
@@ -152,6 +165,7 @@ const getPublicSettings = async (req, res) => {
             isOrderNoteEnabled: restaurant.settings?.isOrderNoteEnabled ?? true,
             isTakeawayChargeEnabled: restaurant.settings?.isTakeawayChargeEnabled || false,
             takeawayCharge: restaurant.settings?.takeawayCharge || 0,
+            onlineOrdering: restaurant.settings?.onlineOrdering || { isEnabled: false },
             qrMenuMode: restaurant.settings?.qrMenuMode || 'order',
             additionalCharges: restaurant.settings?.additionalCharges || []
         });

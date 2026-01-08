@@ -6,9 +6,9 @@ const User = require('../models/User');
 const createStaff = async (req, res) => {
     const { name, role, phone, email, username, password } = req.body;
 
-    // Roles allowed to be created: cook, waiter, admin
-    if (!['cook', 'waiter', 'admin'].includes(role)) {
-        return res.status(400).json({ message: 'Invalid role. Can only create cook, waiter, or admin.' });
+    // Roles allowed to be created: cook, waiter, admin, delivery, packer
+    if (!['cook', 'waiter', 'admin', 'delivery', 'packer'].includes(role)) {
+        return res.status(400).json({ message: 'Invalid role. Can only create cook, waiter, admin, delivery, or packer.' });
     }
 
     try {

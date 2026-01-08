@@ -35,7 +35,7 @@ const placeOrder = async (req, res) => {
 
         // Table Token Verification (Anti-IDOR) - Skip for Staff/App
         // If req.user exists, it means they passed the 'protect' middleware (Admin/Staff)
-        if (!req.user && (orderType === 'dine-in' || tableNumber)) {
+        if (!req.user && (orderType === 'dine-in' || (tableNumber && tableNumber !== 'online'))) {
             const crypto = require('crypto');
             const salt = process.env.JWT_SECRET || 'resto-secure-salt';
             const secretVersion = restaurant.settings?.secretVersion || 1;
@@ -53,8 +53,12 @@ const placeOrder = async (req, res) => {
             }
         }
 
-        // Geofencing Check
-        if (restaurant.settings?.geofencingEnabled && restaurant.settings?.location?.latitude) {
+        // Geofencing/Location Check
+        // Enforce if: (Not online and geofencing enabled) OR (Online and locationRequired enabled)
+        const isLocationRequired = (orderType !== 'online-delivery' && restaurant.settings?.geofencingEnabled) ||
+            (orderType === 'online-delivery' && restaurant.settings?.onlineOrdering?.locationRequired);
+
+        if (isLocationRequired && restaurant.settings?.location?.latitude) {
             if (!customerLocation || !customerLocation.latitude || !customerLocation.longitude) {
                 return res.status(403).json({
                     message: 'Location access is required to place an order at this restaurant.',
@@ -92,7 +96,10 @@ const placeOrder = async (req, res) => {
         }
 
         // Check if customer login is required
-        if (restaurant.settings?.customerLoginRequired) {
+        const isLoginRequired = restaurant.settings?.customerLoginRequired ||
+            (orderType === 'online-delivery' && restaurant.settings?.onlineOrdering?.loginRequired);
+
+        if (isLoginRequired) {
             // Check if user is authenticated
             const token = req.headers.authorization?.split(' ')[1];
 
@@ -178,6 +185,7 @@ const placeOrder = async (req, res) => {
                     // Check applicability
                     if (charge.applicableTo === 'dine-in' && orderType !== 'dine-in') return;
                     if (charge.applicableTo === 'takeaway' && orderType !== 'takeaway') return;
+                    if (charge.applicableTo === 'online' && orderType !== 'online-delivery') return;
 
                     let amount = 0;
                     if (charge.type === 'percent') {
@@ -200,34 +208,66 @@ const placeOrder = async (req, res) => {
         let packagingChargeAmount = 0;
         if (orderType === 'takeaway' && restaurant.settings?.isTakeawayChargeEnabled && restaurant.settings?.takeawayCharge > 0) {
             packagingChargeAmount = restaurant.settings.takeawayCharge;
-            // Add to applied charges for consistency? Or keep separate as it's conditional?
-            // Keeping separate in schema, but total includes it.
+        } else if (orderType === 'online-delivery' && restaurant.settings?.onlineOrdering?.packagingFee > 0) {
+            packagingChargeAmount = restaurant.settings.onlineOrdering.packagingFee;
         }
 
-        const totalAmount = billAmount + totalAdditionalCharges + packagingChargeAmount;
+        // Apply Delivery Fee for Online Orders
+        let deliveryFeeAmount = 0;
+        if (orderType === 'online-delivery' && restaurant.settings?.onlineOrdering?.deliveryFee > 0) {
+            deliveryFeeAmount = restaurant.settings.onlineOrdering.deliveryFee;
+            if (billAmount < (restaurant.settings.onlineOrdering.minOrderAmount || 0)) {
+                return res.status(400).json({ message: `Minimum order amount for delivery is ${restaurant.settings.onlineOrdering.minOrderAmount}` });
+            }
+        }
+
+        const totalAmount = billAmount + totalAdditionalCharges + packagingChargeAmount + deliveryFeeAmount;
 
         // NEW: Check payment flow setting for initial status
         const paymentFlow = restaurant.settings?.paymentFlow || 'post';
-        const initialStatus = paymentFlow === 'pre' ? 'pending-payment' : 'placed';
+
+        // Online orders always start as 'placed' unless pre-payment is MANDATORY
+        let initialStatus = 'placed';
+        if (paymentFlow === 'pre' && orderType !== 'online-delivery') {
+            initialStatus = 'pending-payment';
+        }
+
+        // Auto-KOT for Online Orders
+        if (orderType === 'online-delivery' && restaurant.settings?.onlineOrdering?.autoKOT) {
+            initialStatus = 'preparing';
+        }
 
         const order = new Order({
             restaurantId,
             tableId,
-            tableNumber: orderType === 'takeaway' ? 'TK' : tableNumber,
+            tableNumber: orderType === 'takeaway' ? 'TK' : (orderType === 'online-delivery' ? 'ON' : tableNumber),
             orderType,
+            deliveryDetails: orderType === 'online-delivery' ? req.body.deliveryDetails : undefined,
             items: orderItems,
             orderNote,
             billAmount,
-            taxAmount: 0, // Legacy field
-            serviceChargeAmount: 0, // Legacy field
-            appliedCharges, // NEW: Detailed breakdown
+            taxAmount: deliveryFeeAmount, // Temporarily using taxAmount for delivery fee to avoid schema breakage if needed, or better: add to appliedCharges
+            appliedCharges,
             packagingCharge: packagingChargeAmount,
             totalAmount,
             status: initialStatus,
+            timeline: [{
+                status: initialStatus,
+                time: new Date(),
+                user: req.user ? 'Admin' : 'Customer'
+            }],
             advanceRequired: advanceRequired || false,
-            advanceAmount: advanceAmount || 0,
-            timeline: [{ status: initialStatus, user: req.user ? 'Admin' : 'Customer' }]
         });
+
+        // Add Delivery Fee to applied charges for UI consistency
+        if (deliveryFeeAmount > 0) {
+            order.appliedCharges.push({
+                name: 'Delivery Fee',
+                chargeType: 'fixed',
+                value: deliveryFeeAmount,
+                amount: deliveryFeeAmount
+            });
+        }
 
         // Initialize course statuses based on items in the order using generated IDs
         const courseGroups = {};
@@ -263,66 +303,78 @@ const placeOrder = async (req, res) => {
 // @route   GET /api/orders
 // @access  Private (Admin/Cook/Waiter)
 const getOrders = async (req, res) => {
-    const { status, date, waiterId } = req.query;
-    let filter = { restaurantId: new mongoose.Types.ObjectId(req.user.restaurantId.toString()) };
+    try {
+        const { status, date, waiterId, deliveryBoyId, orderType } = req.query;
+        let filter = { restaurantId: new mongoose.Types.ObjectId(req.user.restaurantId.toString()) };
 
-    if (status) {
-        filter.status = status;
-    }
+        if (status && status !== 'undefined' && status !== '') {
+            filter.status = status;
+        }
 
-    // Date filter logic
-    if (date === 'today') {
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
-        const end = new Date();
-        end.setHours(23, 59, 59, 999);
-        filter.createdAt = { $gte: start, $lte: end };
-    } else if (date === 'last24h') {
-        const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        filter.createdAt = { $gte: last24h };
-    } else if (date) {
-        // Handle specific date YYYY-MM-DD
-        const start = new Date(date);
-        if (!isNaN(start.getTime())) {
+        if (orderType && orderType !== 'undefined' && orderType !== '') {
+            filter.orderType = orderType;
+        }
+
+        // Date filter logic
+        if (date === 'today') {
+            const start = new Date();
             start.setHours(0, 0, 0, 0);
-            const end = new Date(date);
+            const end = new Date();
             end.setHours(23, 59, 59, 999);
             filter.createdAt = { $gte: start, $lte: end };
-        }
-    } else if (!date && (req.user.role === 'cook' || req.user.role === 'waiter')) {
-        // Default for staff if no date is specified
-        const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        filter.createdAt = { $gte: last24h };
-    }
-
-    if (waiterId && waiterId !== 'undefined' && waiterId !== '') {
-        try {
-            const wId = new mongoose.Types.ObjectId(waiterId.toString());
-            const waiter = await User.findById(wId);
-
-            // Fallback: match by waiterId OR by their name/title in the timeline (for orders before field was added)
-            const staffMatch = [
-                { waiterId: wId }
-            ];
-
-            if (waiter) {
-                staffMatch.push({ "timeline.user": waiter.name });
-                staffMatch.push({ "timeline.user": waiter.role.charAt(0).toUpperCase() + waiter.role.slice(1) }); // e.g. "Waiter"
+        } else if (date === 'last24h') {
+            const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            filter.createdAt = { $gte: last24h };
+        } else if (date && date !== 'undefined' && date !== '') {
+            const start = new Date(date);
+            if (!isNaN(start.getTime())) {
+                start.setHours(0, 0, 0, 0);
+                const end = new Date(date);
+                end.setHours(23, 59, 59, 999);
+                filter.createdAt = { $gte: start, $lte: end };
             }
-
-            filter.$or = staffMatch;
-        } catch (err) {
-            console.error('Invalid waiterId in query:', waiterId);
+        } else if (!date && (['cook', 'waiter', 'delivery'].includes(req.user.role))) {
+            const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            filter.createdAt = { $gte: last24h };
         }
-    }
 
-    console.log('--- Order Filter ---');
-    console.log('User Role:', req.user.role, '| User ID:', req.user._id);
-    console.log('Query:', req.query);
-    console.log('Final Filter:', JSON.stringify(filter, null, 2));
-    console.log('--------------------');
+        const andConditions = [];
 
-    try {
+        // Inclusive Delivery Filter: Assigned to THEM OR Unassigned (Pool)
+        if (deliveryBoyId && deliveryBoyId !== 'undefined' && deliveryBoyId !== '') {
+            try {
+                const dbId = new mongoose.Types.ObjectId(deliveryBoyId.toString());
+                andConditions.push({
+                    $or: [
+                        { deliveryBoyId: dbId },
+                        { deliveryBoyId: null },
+                        { deliveryBoyId: { $exists: false } }
+                    ]
+                });
+            } catch (err) {
+                console.error('Invalid deliveryBoyId:', deliveryBoyId);
+            }
+        }
+
+        if (waiterId && waiterId !== 'undefined' && waiterId !== '') {
+            try {
+                const wId = new mongoose.Types.ObjectId(waiterId.toString());
+                const waiter = await User.findById(wId);
+                const staffMatch = [{ waiterId: wId }];
+                if (waiter) {
+                    staffMatch.push({ "timeline.user": waiter.name });
+                    staffMatch.push({ "timeline.user": waiter.role.charAt(0).toUpperCase() + waiter.role.slice(1) });
+                }
+                andConditions.push({ $or: staffMatch });
+            } catch (err) {
+                console.error('Invalid waiterId:', waiterId);
+            }
+        }
+
+        if (andConditions.length > 0) {
+            filter.$and = andConditions;
+        }
+
         const orders = await Order.find(filter).sort({ createdAt: -1 });
         res.json(orders);
     } catch (error) {
@@ -378,6 +430,35 @@ const updateOrderStatus = async (req, res) => {
             order.servedAt = new Date();
         }
 
+        if (status === 'packed') {
+            order.packedAt = new Date();
+            order.packerId = req.user._id;
+            order.servedBy = req.user.name;
+        }
+
+        if (status === 'dispatched') {
+            order.dispatchedAt = new Date();
+            if (req.body.deliveryBoyId) {
+                order.deliveryBoyId = req.body.deliveryBoyId;
+                const dbUser = await User.findById(req.body.deliveryBoyId);
+                if (dbUser) order.servedBy = dbUser.name;
+            }
+        }
+
+        if (status === 'delivered' || status === 'served') {
+            if (status === 'delivered') order.servedAt = new Date();
+            if (!order.servedBy) order.servedBy = userName || req.user.name || req.user.role;
+
+            // Auto-complete if already paid
+            if (order.paymentStatus === 'paid') {
+                order.status = 'completed';
+                order.timeline.push({
+                    status: 'completed',
+                    user: 'System'
+                });
+            }
+        }
+
         if (status === 'cancelled') {
             const currentPaymentStatus = (order.paymentStatus || 'pending').toLowerCase();
             if (currentPaymentStatus === 'pending') {
@@ -416,13 +497,14 @@ const markOrderAsPaid = async (req, res) => {
         const { orderId } = req.params;
         const restaurantId = req.user.restaurantId;
 
-        // 1. Check if waiter payment is enabled (only for waiter role, admin can always collect)
+        // 1. Check if waiter/delivery payment is enabled
         if (req.user.role === 'waiter') {
             const restaurant = await Restaurant.findById(restaurantId);
             if (!restaurant || !restaurant.settings?.waiterPaymentEnabled) {
                 return res.status(403).json({ message: 'Waiter payment is not enabled for this restaurant' });
             }
         }
+        // Delivery role is generally allowed to collect payment for online orders
 
         // 2. Find and update the order
         const order = await Order.findOne({ _id: orderId, restaurantId: restaurantId });
@@ -444,7 +526,16 @@ const markOrderAsPaid = async (req, res) => {
 
         order.paymentStatus = 'paid';
         order.paymentMode = (paymentMethod || 'cash').toLowerCase();
-        order.status = 'completed'; // Payment completes the order flow usually
+
+        // Auto-complete if already delivered/served
+        if (order.status === 'delivered' || order.status === 'served') {
+            order.status = 'completed';
+            order.timeline.push({
+                status: 'completed',
+                user: 'System'
+            });
+        }
+
         order.waiterId = req.user._id; // Track who collected payment
 
         // Add to timeline

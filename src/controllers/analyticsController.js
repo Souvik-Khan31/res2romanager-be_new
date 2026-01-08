@@ -15,6 +15,7 @@ const getDashboardStats = async (req, res) => {
 
         if (startDate && endDate) {
             start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
             end = new Date(endDate);
             end.setHours(23, 59, 59, 999);
         } else {
@@ -114,7 +115,7 @@ const getReports = async (req, res) => {
         if (startDate && endDate) {
             start = new Date(startDate);
             end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
+            end = new Date(endDate);
         } else {
             // Default to last 7 days
             start = new Date();
@@ -214,6 +215,20 @@ const getReports = async (req, res) => {
                 }
             ]);
             return res.json(categoryData);
+        }
+
+        if (type === 'mode') {
+            const modeData = await Order.aggregate([
+                { $match: matchStage },
+                {
+                    $group: {
+                        _id: "$orderType",
+                        count: { $sum: 1 },
+                        total: { $sum: "$totalAmount" }
+                    }
+                }
+            ]);
+            return res.json(modeData);
         }
 
         res.status(400).json({ message: 'Invalid report type' });

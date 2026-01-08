@@ -19,3 +19,11 @@ const io = initSocket(server);
 server.listen(PORT, HOST, () => {
     console.log(`Server running on http://${HOST}:${PORT}`);
 });
+
+// Handle client error (fixes: (node:4112) Warning: An error event has already been emitted on the socket)
+server.on('clientError', (err, socket) => {
+    if (err.code === 'ECONNRESET' || !socket.writable) {
+        return;
+    }
+    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+});

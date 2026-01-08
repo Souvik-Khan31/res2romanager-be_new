@@ -58,6 +58,8 @@ const registerRestaurant = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 restaurantId: user.restaurantId,
+                address: user.address,
+                phone: user.phone,
                 subscription: restaurant.subscription,
                 token: generateToken(user._id, sessionId),
             });
@@ -96,6 +98,11 @@ const loginUser = async (req, res) => {
                 role: user.role,
                 restaurantId: user.restaurantId,
                 restaurantName: restaurant ? restaurant.name : 'Unknown',
+                address: user.address,
+                phone: user.phone,
+                pincode: user.pincode,
+                landmark: user.landmark,
+                city: user.city,
                 subscription: restaurant ? restaurant.subscription : null,
                 token: generateToken(user._id, sessionId),
             });
@@ -116,7 +123,51 @@ const getProfile = async (req, res) => {
             _id: user._id,
             name: user.name,
             role: user.role,
-            restaurantId: user.restaurantId
+            name: user.name,
+            role: user.role,
+            restaurantId: user.restaurantId,
+            address: user.address,
+            phone: user.phone,
+            pincode: user.pincode,
+            landmark: user.landmark,
+            city: user.city
+        });
+    } else {
+        res.status(404).json({ message: 'User not found' });
+    }
+};
+
+// @desc    Update user profile
+const updateProfile = async (req, res) => {
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+        user.name = req.body.name || user.name;
+        user.email = req.body.email || user.email;
+        if (req.body.password) {
+            user.password = req.body.password;
+        }
+
+        // Update address fields if provided
+        if (req.body.phone !== undefined) user.phone = req.body.phone;
+        if (req.body.address !== undefined) user.address = req.body.address;
+        if (req.body.pincode !== undefined) user.pincode = req.body.pincode;
+        if (req.body.landmark !== undefined) user.landmark = req.body.landmark;
+        if (req.body.city !== undefined) user.city = req.body.city;
+
+        const updatedUser = await user.save();
+
+        res.json({
+            _id: updatedUser._id,
+            name: updatedUser.name,
+            email: updatedUser.email,
+            role: updatedUser.role,
+            phone: updatedUser.phone,
+            address: updatedUser.address,
+            pincode: updatedUser.pincode,
+            landmark: updatedUser.landmark,
+            city: updatedUser.city,
+            token: generateToken(updatedUser._id, updatedUser.currentSessionId)
         });
     } else {
         res.status(404).json({ message: 'User not found' });
@@ -152,6 +203,8 @@ const registerCustomer = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 restaurantId: user.restaurantId,
+                address: user.address,
+                phone: user.phone,
                 token: generateToken(user._id, sessionId),
             });
         } else {
@@ -219,6 +272,11 @@ const googleLogin = async (req, res) => {
             email: user.email,
             username: user.username,
             role: user.role,
+            address: user.address,
+            phone: user.phone,
+            pincode: user.pincode,
+            landmark: user.landmark,
+            city: user.city,
             restaurantId: user.restaurantId,
             restaurantName: restaurant ? restaurant.name : 'Unknown',
             subscription: restaurant ? restaurant.subscription : null,
@@ -230,4 +288,4 @@ const googleLogin = async (req, res) => {
     }
 };
 
-module.exports = { registerRestaurant, loginUser, getProfile, registerCustomer, googleLogin };
+module.exports = { registerRestaurant, loginUser, getProfile, registerCustomer, googleLogin, updateProfile };

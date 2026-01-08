@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['super-admin', 'admin', 'cook', 'waiter', 'customer'],
+        enum: ['super-admin', 'admin', 'cook', 'waiter', 'customer', 'delivery', 'packer'],
         default: 'waiter'
     },
     phone: {
@@ -33,6 +33,10 @@ const userSchema = new mongoose.Schema({
     email: { // Optional for staff
         type: String
     },
+    address: { type: String },
+    pincode: { type: String },
+    landmark: { type: String },
+    city: { type: String },
     currentSessionId: {
         type: String
     },
