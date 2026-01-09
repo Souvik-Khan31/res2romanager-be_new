@@ -27,6 +27,7 @@ const orderSchema = new mongoose.Schema({
         pincode: { type: String },
         landmark: { type: String },
         city: { type: String },
+        phone: { type: String },
         latitude: { type: Number },
         longitude: { type: Number }
     },

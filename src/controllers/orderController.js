@@ -226,15 +226,10 @@ const placeOrder = async (req, res) => {
         // NEW: Check payment flow setting for initial status
         const paymentFlow = restaurant.settings?.paymentFlow || 'post';
 
-        // Online orders always start as 'placed' unless pre-payment is MANDATORY
+        // Online orders always start as 'placed'
         let initialStatus = 'placed';
         if (paymentFlow === 'pre' && orderType !== 'online-delivery') {
             initialStatus = 'pending-payment';
-        }
-
-        // Auto-KOT for Online Orders
-        if (orderType === 'online-delivery' && restaurant.settings?.onlineOrdering?.autoKOT) {
-            initialStatus = 'preparing';
         }
 
         const order = new Order({
@@ -243,6 +238,8 @@ const placeOrder = async (req, res) => {
             tableNumber: orderType === 'takeaway' ? 'TK' : (orderType === 'online-delivery' ? 'ON' : tableNumber),
             orderType,
             deliveryDetails: orderType === 'online-delivery' ? req.body.deliveryDetails : undefined,
+            customerName: req.user ? req.user.name : undefined,
+            customerPhone: req.user ? req.user.phone : (orderType === 'online-delivery' ? req.body.deliveryDetails?.phone : undefined),
             items: orderItems,
             orderNote,
             billAmount,
