@@ -12,6 +12,7 @@ const { sendPushNotification } = require('../services/pushService');
 // @access  Public (Customer)
 const placeOrder = async (req, res) => {
     const { restaurantId, tableNumber, tableId, orderType, items, advanceRequired, advanceAmount, tableToken, customerLocation, orderNote } = req.body;
+    console.log('Backend placeOrder: Received customerLocation:', customerLocation);
 
     if (!items || items.length === 0) {
         return res.status(400).json({ message: 'No items in order' });
@@ -237,7 +238,11 @@ const placeOrder = async (req, res) => {
             tableId,
             tableNumber: orderType === 'takeaway' ? 'TK' : (orderType === 'online-delivery' ? 'ON' : tableNumber),
             orderType,
-            deliveryDetails: orderType === 'online-delivery' ? req.body.deliveryDetails : undefined,
+            deliveryDetails: orderType === 'online-delivery' ? {
+                ...req.body.deliveryDetails,
+                latitude: customerLocation?.latitude || req.body.deliveryDetails?.latitude,
+                longitude: customerLocation?.longitude || req.body.deliveryDetails?.longitude
+            } : undefined,
             customerName: req.user ? req.user.name : undefined,
             customerPhone: req.user ? req.user.phone : (orderType === 'online-delivery' ? req.body.deliveryDetails?.phone : undefined),
             items: orderItems,
