@@ -69,7 +69,7 @@ const getMenuItems = async (req, res) => {
 // @route   POST /api/menu/items
 // @access  Private/Admin
 const createMenuItem = async (req, res) => {
-    const { categoryId, name, description, price, salePrice, type, isAvailable, isHidden } = req.body;
+    const { categoryId, name, description, price, salePrice, type, isAvailable, isHidden, stockQuantity, barcode, trackStock } = req.body;
     let imagePath = '';
 
     if (req.file) {
@@ -87,6 +87,9 @@ const createMenuItem = async (req, res) => {
             type,
             isAvailable: isAvailable !== undefined ? isAvailable : true,
             isHidden: isHidden !== undefined ? isHidden : false,
+            stockQuantity: stockQuantity || 0,
+            barcode: barcode || undefined,
+            trackStock: trackStock !== undefined ? trackStock : false,
             image: imagePath
         });
         res.status(201).json(item);
@@ -107,7 +110,7 @@ const updateMenuItem = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized' });
         }
 
-        const { categoryId, name, description, price, salePrice, type, isAvailable, isHidden } = req.body;
+        const { categoryId, name, description, price, salePrice, type, isAvailable, isHidden, stockQuantity, barcode, trackStock } = req.body;
 
         item.name = name || item.name;
         item.description = description || item.description;
@@ -117,6 +120,9 @@ const updateMenuItem = async (req, res) => {
         if (categoryId) item.categoryId = categoryId;
         if (isAvailable !== undefined) item.isAvailable = isAvailable;
         if (isHidden !== undefined) item.isHidden = isHidden;
+        if (stockQuantity !== undefined) item.stockQuantity = stockQuantity;
+        if (barcode !== undefined) item.barcode = barcode;
+        if (trackStock !== undefined) item.trackStock = trackStock;
 
         if (req.file) {
             // Optionally delete old image

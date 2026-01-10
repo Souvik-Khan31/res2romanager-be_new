@@ -4,6 +4,7 @@ const MenuItem = require('../models/MenuItem');
 const MenuCategory = require('../models/MenuCategory');
 const Restaurant = require('../models/Restaurant');
 const User = require('../models/User');
+const InventoryItem = require('../models/InventoryItem');
 const { getIo } = require('../../socket');
 const { sendPushNotification } = require('../services/pushService');
 
@@ -288,6 +289,35 @@ const placeOrder = async (req, res) => {
         }));
 
         await order.save();
+
+        // Deduct Stock from Inventory (if item exists)
+        // This runs asynchronously to not block the response, or we can await it.
+        // Given critical stock tracking, awaiting is safer but in parallel.
+        try {
+            const inventoryUpdates = orderItems.map(async (item) => {
+                // Try to find by Barcode first if available (more precise), otherwise Name
+                // We need to know the barcode from the MenuItem. 
+                // We fetched dbItem earlier but didn't save it to orderItems array except basic fields.
+                // Re-fetch or strict name match? Name match is used by Import feature, so use Name.
+                // Ideally, we should check restaurantId too.
+
+                // Note: quantity logic handling
+                // If 1 Burger is ordered, deduct 1 from Inventory Item "Burger"
+
+                await InventoryItem.updateOne(
+                    {
+                        restaurantId: restaurantId,
+                        name: item.name
+                    },
+                    { $inc: { quantity: -item.quantity } }
+                );
+            });
+
+            await Promise.all(inventoryUpdates);
+        } catch (err) {
+            console.error('Failed to update inventory stock:', err);
+            // Don't fail the order just because inventory sync failed, but log it.
+        }
 
         // Emit Socket Event
         const io = getIo();

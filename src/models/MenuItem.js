@@ -12,7 +12,10 @@ const menuItemSchema = new mongoose.Schema({
     isHidden: { type: Boolean, default: false }, // Hidden from customers
     type: { type: String, enum: ['veg', 'non-veg', 'egg'], default: 'veg' },
     subCategory: { type: String },
-    courseType: { type: String, enum: ['starter', 'main-course', 'dessert', 'beverage', 'none'], default: 'none' }
+    courseType: { type: String, enum: ['starter', 'main-course', 'dessert', 'beverage', 'none'], default: 'none' },
+    stockQuantity: { type: Number, default: 0 },
+    barcode: { type: String, unique: true, sparse: true, trim: true },
+    trackStock: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model('MenuItem', menuItemSchema);
