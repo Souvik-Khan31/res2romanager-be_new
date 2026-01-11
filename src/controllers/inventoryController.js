@@ -278,6 +278,11 @@ const processBulkBilling = asyncHandler(async (req, res) => {
 
     // Process each item
     for (const billItem of items) {
+        // Skip custom/ad-hoc items
+        if (billItem.isCustom || (typeof billItem._id === 'string' && billItem._id.startsWith('custom_')) || (typeof billItem._id === 'string' && billItem._id.startsWith('adhoc_'))) {
+            continue;
+        }
+
         const item = await InventoryItem.findOne({
             _id: billItem._id,
             $or: [

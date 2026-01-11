@@ -38,6 +38,10 @@ const inventoryItemSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    mrp: {
+        type: Number,
+        default: 0
+    },
     sellingPrice: {
         type: Number,
         default: 0
