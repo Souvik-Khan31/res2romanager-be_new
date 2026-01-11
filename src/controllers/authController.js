@@ -39,7 +39,7 @@ const registerRestaurant = async (req, res) => {
         });
 
         const sessionId = crypto.randomUUID();
-        const user = await User.create({
+        const userData = {
             restaurantId: restaurant._id,
             name: ownerName,
             email,
@@ -47,9 +47,12 @@ const registerRestaurant = async (req, res) => {
             password: password || crypto.randomBytes(16).toString('hex'),
             role: 'admin',
             phone,
-            currentSessionId: sessionId,
-            googleId: googleId || null
-        });
+            currentSessionId: sessionId
+        };
+
+        if (googleId) userData.googleId = googleId;
+
+        const user = await User.create(userData);
 
         if (restaurant && user) {
             res.status(201).json({

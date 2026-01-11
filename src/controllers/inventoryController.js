@@ -269,7 +269,7 @@ const deleteSupplier = asyncHandler(async (req, res) => {
 });
 
 const processBulkBilling = asyncHandler(async (req, res) => {
-    const { items, customerPhone } = req.body;
+    const { items, customerPhone, customerName } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
         res.status(400);
@@ -313,7 +313,7 @@ const processBulkBilling = asyncHandler(async (req, res) => {
         restaurantId: req.user.restaurantId,
         user: req.user._id,
         action: 'INVENTORY_BILLING',
-        details: `Bulk billing processed for ${items.length} items.${customerPhone ? ' Customer Phone: ' + customerPhone : ''}`,
+        details: `Bulk billing processed for ${items.length} items.${customerName ? ' Customer Name: ' + customerName : ''}${customerPhone ? ' Customer Phone: ' + customerPhone : ''}`,
         entityType: 'Inventory'
     });
 
