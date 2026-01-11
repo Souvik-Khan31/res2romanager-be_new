@@ -269,7 +269,7 @@ const deleteSupplier = asyncHandler(async (req, res) => {
 });
 
 const processBulkBilling = asyncHandler(async (req, res) => {
-    const { items } = req.body;
+    const { items, customerPhone } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
         res.status(400);
@@ -306,6 +306,16 @@ const processBulkBilling = asyncHandler(async (req, res) => {
             console.warn(`Item not found during billing: ${billItem._id}`);
         }
     }
+
+    // Create Audit Log for this billing transaction
+    const AuditLog = require('../models/AuditLog');
+    await AuditLog.create({
+        restaurantId: req.user.restaurantId,
+        user: req.user._id,
+        action: 'INVENTORY_BILLING',
+        details: `Bulk billing processed for ${items.length} items.${customerPhone ? ' Customer Phone: ' + customerPhone : ''}`,
+        entityType: 'Inventory'
+    });
 
     res.status(200).json({ message: 'Billing processed successfully' });
 });

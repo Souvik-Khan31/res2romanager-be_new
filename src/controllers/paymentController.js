@@ -21,7 +21,7 @@ const getBill = async (req, res) => {
 // @route   POST /api/orders/:id/pay
 // @access  Private (Staff/Admin)
 const processPayment = async (req, res) => {
-    const { paymentMode } = req.body; // cash, card, upi
+    const { paymentMode, customerPhone } = req.body; // cash, card, upi, customerPhone
 
     try {
         const order = await Order.findById(req.params.id);
@@ -31,6 +31,7 @@ const processPayment = async (req, res) => {
 
         order.paymentStatus = 'paid';
         order.paymentMode = paymentMode;
+        if (customerPhone) order.customerPhone = customerPhone;
         order.status = 'completed'; // Auto complete order on payment?
 
         // Add to timeline
