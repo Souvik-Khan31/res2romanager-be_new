@@ -9,7 +9,6 @@ const inventoryItemSchema = new mongoose.Schema({
     category: {
         type: String,
         required: true,
-        enum: ['Vegetable', 'Fruit', 'Meat', 'Dairy', 'Seafood', 'Dry Goods', 'Spices', 'Frozen', 'Beverage', 'Alcohol', 'Packaging', 'Cleaning', 'Other'],
         default: 'Other'
     },
     restaurantId: {
@@ -25,7 +24,6 @@ const inventoryItemSchema = new mongoose.Schema({
     unit: {
         type: String,
         required: true,
-        enum: ['kg', 'g', 'l', 'ml', 'pcs', 'pack', 'box', 'can', 'bottle', 'bunch'],
         default: 'pcs'
     },
     minThreshold: {
@@ -52,12 +50,18 @@ const inventoryItemSchema = new mongoose.Schema({
         unique: true,
         sparse: true,
         trim: true
-    }
+    },
+    customFields: [{
+        key: { type: String, trim: true },
+        value: { type: String, trim: true }
+    }]
 }, {
     timestamps: true
 });
 
 // Add index for searching
 inventoryItemSchema.index({ name: 'text' });
+// Add compound index for barcode Uniqueness per restaurant
+inventoryItemSchema.index({ barcode: 1, restaurantId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('InventoryItem', inventoryItemSchema);

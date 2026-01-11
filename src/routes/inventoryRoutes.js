@@ -10,9 +10,14 @@ const {
     getSuppliers,
     createSupplier,
     updateSupplier,
-    deleteSupplier
+    deleteSupplier,
+    processBulkBilling
 } = require('../controllers/inventoryController');
 const { protect, authorize } = require('../middleware/authMiddleware');
+
+// Billing Routes
+router.route('/billing/bulk')
+    .post(protect, processBulkBilling);
 
 // Inventory Items Routes
 router.route('/items')

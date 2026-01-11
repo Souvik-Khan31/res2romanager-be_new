@@ -268,6 +268,43 @@ const deleteSupplier = asyncHandler(async (req, res) => {
     }
 });
 
+const processBulkBilling = asyncHandler(async (req, res) => {
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        res.status(400);
+        throw new Error('No items to process');
+    }
+
+    // Process each item
+    for (const billItem of items) {
+        const item = await InventoryItem.findOne({
+            _id: billItem._id,
+            $or: [
+                { restaurantId: req.user.restaurantId },
+                { restaurantId: { $exists: false } },
+                { restaurantId: null }
+            ]
+        });
+
+        if (item) {
+            // Check if enough stock
+            if (item.quantity < billItem.billQuantity) {
+                res.status(400);
+                throw new Error(`Insufficient stock for item: ${item.name}`);
+            }
+
+            item.quantity -= billItem.billQuantity;
+            await item.save();
+        } else {
+            // Skip or error? For now, we'll log and continue or just ignore
+            console.warn(`Item not found during billing: ${billItem._id}`);
+        }
+    }
+
+    res.status(200).json({ message: 'Billing processed successfully' });
+});
+
 module.exports = {
     getItems,
     getItem,
@@ -278,5 +315,6 @@ module.exports = {
     getSuppliers,
     createSupplier,
     updateSupplier,
-    deleteSupplier
+    deleteSupplier,
+    processBulkBilling
 };
