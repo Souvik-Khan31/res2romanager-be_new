@@ -50,7 +50,7 @@ const storage = new CloudinaryStorage({
         }
 
         // 1. Website Name (from Env or default)
-        const websiteName = sanitize(process.env.PRODUCT_NAME) || 'RestoManager';
+        const websiteName = sanitize(process.env.PRODUCT_NAME) || 'res2ro manager';
 
         // 2. Restaurant Name (from DB or random)
         const dbRestName = await getRestaurantName(req);
