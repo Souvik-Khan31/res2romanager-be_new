@@ -11,13 +11,20 @@ const {
     createSupplier,
     updateSupplier,
     deleteSupplier,
-    processBulkBilling
+    processBulkBilling,
+    getLabelSettings,
+    updateLabelSettings
 } = require('../controllers/inventoryController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Billing Routes
 router.route('/billing/bulk')
     .post(protect, processBulkBilling);
+
+// Label Designer Settings
+router.route('/label-settings')
+    .get(protect, getLabelSettings)
+    .put(protect, authorize('admin', 'super-admin'), updateLabelSettings);
 
 // Inventory Items Routes
 router.route('/items')

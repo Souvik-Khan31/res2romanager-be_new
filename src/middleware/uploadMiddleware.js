@@ -47,6 +47,8 @@ const storage = new CloudinaryStorage({
             transformation.push({ width: 768, crop: 'limit' });
         } else if (file.fieldname === 'qrImage') {
             transformation.push({ width: 512, height: 512, crop: 'limit' });
+        } else if (file.fieldname === 'offerAd') {
+            transformation.push({ width: 800, crop: 'limit' }); // Max width 800 for banner quality
         }
 
         // 1. Website Name (from Env or default)
@@ -66,6 +68,8 @@ const storage = new CloudinaryStorage({
             productName = 'Cover_Image';
         } else if (file.fieldname === 'qrImage') {
             productName = 'QR_Code';
+        } else if (file.fieldname === 'offerAd') {
+            productName = `Offer_Ad_${getRandom()}`;
         } else {
             const origName = sanitize(path.parse(file.originalname).name);
             productName = origName || `File_${getRandom()}`;
@@ -125,6 +129,9 @@ module.exports = {
 
     // QR image upload
     uploadQRImage: createUpload(),
+
+    // Offer Ad upload
+    uploadOfferAd: createUpload(),
 
     // Custom size upload
     createUpload,

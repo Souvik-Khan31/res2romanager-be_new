@@ -15,6 +15,10 @@ const menuItemSchema = new mongoose.Schema({
     courseType: { type: String, enum: ['starter', 'main-course', 'dessert', 'beverage', 'none'], default: 'none' },
     stockQuantity: { type: Number, default: 0 },
     barcode: { type: String, unique: true, sparse: true, trim: true },
+    offer: {
+        type: { type: String, enum: ['percentage', 'flat', 'none'], default: 'none' },
+        value: { type: Number, default: 0 }
+    },
     trackStock: { type: Boolean, default: false }
 }, { timestamps: true });
 

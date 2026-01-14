@@ -1,5 +1,6 @@
 const InventoryItem = require('../models/InventoryItem');
 const Supplier = require('../models/Supplier');
+const Restaurant = require('../models/Restaurant');
 const asyncHandler = require('express-async-handler');
 
 /**
@@ -320,6 +321,38 @@ const processBulkBilling = asyncHandler(async (req, res) => {
     res.status(200).json({ message: 'Billing processed successfully' });
 });
 
+/**
+ * @desc    Get label designer settings
+ * @route   GET /api/inventory/label-settings
+ * @access  Private
+ */
+const getLabelSettings = asyncHandler(async (req, res) => {
+    const restaurant = await Restaurant.findById(req.user.restaurantId);
+    if (restaurant) {
+        res.json(restaurant.inventoryLabelSettings || {});
+    } else {
+        res.status(404);
+        throw new Error('Restaurant not found');
+    }
+});
+
+/**
+ * @desc    Update label designer settings
+ * @route   PUT /api/inventory/label-settings
+ * @access  Private/Admin
+ */
+const updateLabelSettings = asyncHandler(async (req, res) => {
+    const restaurant = await Restaurant.findById(req.user.restaurantId);
+    if (restaurant) {
+        restaurant.inventoryLabelSettings = req.body;
+        await restaurant.save();
+        res.json(restaurant.inventoryLabelSettings);
+    } else {
+        res.status(404);
+        throw new Error('Restaurant not found');
+    }
+});
+
 module.exports = {
     getItems,
     getItem,
@@ -331,5 +364,11 @@ module.exports = {
     createSupplier,
     updateSupplier,
     deleteSupplier,
-    processBulkBilling
+    getSuppliers,
+    createSupplier,
+    updateSupplier,
+    deleteSupplier,
+    processBulkBilling,
+    getLabelSettings,
+    updateLabelSettings
 };

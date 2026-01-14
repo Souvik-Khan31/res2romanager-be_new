@@ -48,6 +48,10 @@ const updateRestaurantSettings = async (req, res) => {
             restaurant.settings.geofencingEnabled = settings.geofencingEnabled ?? restaurant.settings.geofencingEnabled;
             restaurant.settings.isOrderNoteEnabled = settings.isOrderNoteEnabled ?? restaurant.settings.isOrderNoteEnabled;
             restaurant.settings.qrMenuMode = settings.qrMenuMode ?? restaurant.settings.qrMenuMode;
+            if (settings.offerAds) {
+                restaurant.settings.offerAds = settings.offerAds;
+                restaurant.markModified('settings.offerAds'); // Explicitly mark nested array as modified
+            }
 
             // Tax and Takeaway Settings
             // OLD Fields removed in favor of additionalCharges, but keeping for safety if needed or just replace logic
@@ -130,12 +134,42 @@ const uploadQrImage = async (req, res) => {
         const host = req.get('host');
         // const imageUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
         // Returning relative path is often safer for different envs, frontend can prepend base URL
-        const imageUrl = `/uploads/${req.file.filename}`;
+        const imageUrl = req.file.path.replace(/\\/g, "/");
 
         restaurant.settings.paymentQrImage = imageUrl;
         await restaurant.save();
 
         res.json({ message: 'QR Code uploaded successfully', imageUrl, settings: restaurant.settings });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Upload Offer Ad Image
+// @route   POST /api/restaurants/:id/upload-offer-ad
+// @access  Private (Admin)
+const uploadOfferAdImage = async (req, res) => {
+    try {
+        const restaurant = await Restaurant.findById(req.params.id);
+
+        if (!restaurant) {
+            return res.status(404).json({ message: 'Restaurant not found' });
+        }
+
+        if (req.user.restaurantId.toString() !== restaurant._id.toString()) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ message: 'Please upload a file' });
+        }
+
+        const imageUrl = req.file.path.replace(/\\/g, "/");
+
+        // Just return the URL, frontend will add it to the array and save settings
+        res.json({ message: 'Offer Ad uploaded successfully', imageUrl });
 
     } catch (error) {
         console.error(error);
@@ -167,7 +201,8 @@ const getPublicSettings = async (req, res) => {
             takeawayCharge: restaurant.settings?.takeawayCharge || 0,
             onlineOrdering: restaurant.settings?.onlineOrdering || { isEnabled: false },
             qrMenuMode: restaurant.settings?.qrMenuMode || 'order',
-            additionalCharges: restaurant.settings?.additionalCharges || []
+            additionalCharges: restaurant.settings?.additionalCharges || [],
+            offerAds: restaurant.settings?.offerAds || []
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -200,4 +235,4 @@ const getRestaurantRatings = async (req, res) => {
     }
 };
 
-module.exports = { getRestaurant, updateRestaurantSettings, uploadQrImage, getPublicSettings, getRestaurantRatings };
+module.exports = { getRestaurant, updateRestaurantSettings, uploadQrImage, getPublicSettings, getRestaurantRatings, uploadOfferAdImage };

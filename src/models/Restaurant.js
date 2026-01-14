@@ -59,6 +59,10 @@ const restaurantSchema = new mongoose.Schema({
             type: Boolean,
             default: false
         },
+        offerAds: [{
+            text: { type: String, required: true },
+            active: { type: Boolean, default: true }
+        }],
         paymentFlow: {
             type: String,
             enum: ['pre', 'post'],
@@ -112,6 +116,10 @@ const restaurantSchema = new mongoose.Schema({
             type: Number,
             default: 1 // Increment to invalidate old QR codes
         }
+    },
+    inventoryLabelSettings: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {} // Stores the complete label settings object
     },
     logoUrl: {
         type: String
