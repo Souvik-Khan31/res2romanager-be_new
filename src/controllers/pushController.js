@@ -5,21 +5,27 @@ const NotificationSubscription = require('../models/NotificationSubscription');
 // @access  Private
 const subscribe = async (req, res) => {
     try {
-        const { subscription, deviceType } = req.body;
-        console.log(`Received subscription attempt for user ${req.user._id}, device: ${deviceType}`);
+        const { subscription, deviceType, fcmToken } = req.body;
+        console.log(`Received subscription attempt for user ${req.user._id}, device: ${deviceType}, hasFcm: ${!!fcmToken}`);
 
-        if (!subscription || !subscription.endpoint || !subscription.keys) {
-            return res.status(400).json({ message: 'Invalid subscription object' });
+        if (!fcmToken && (!subscription || !subscription.endpoint || !subscription.keys)) {
+            return res.status(400).json({ message: 'Invalid subscription or FCM token' });
         }
 
         // Upsert subscription
+        // If fcmToken is provided, we use it as the unique identifier for mobile devices
+        const query = fcmToken
+            ? { user: req.user._id, fcmToken: fcmToken }
+            : { user: req.user._id, 'subscription.endpoint': subscription.endpoint };
+
         await NotificationSubscription.findOneAndUpdate(
-            { user: req.user._id, 'subscription.endpoint': subscription.endpoint },
+            query,
             {
                 user: req.user._id,
                 restaurantId: req.user.restaurantId,
                 subscription,
-                deviceType: deviceType || 'mobile'
+                fcmToken,
+                deviceType: deviceType || (fcmToken ? 'mobile' : 'desktop')
             },
             { upsert: true, new: true }
         );

@@ -1,5 +1,20 @@
 const webpush = require('web-push');
+const admin = require('firebase-admin');
+const path = require('path');
+const fs = require('fs');
 const NotificationSubscription = require('../models/NotificationSubscription');
+
+// Initialize Firebase Admin
+const serviceAccountPath = path.join(__dirname, '../../config/serviceAccountKey.json');
+if (fs.existsSync(serviceAccountPath)) {
+    const serviceAccount = require(serviceAccountPath);
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+    });
+    console.log('Firebase Admin initialized for FCM');
+} else {
+    console.warn('WARNING: config/serviceAccountKey.json not found. FCM notifications will NOT work.');
+}
 
 // Configure VAPID
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -10,7 +25,7 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
     );
     console.log('VAPID details configured for Push Notifications');
 } else {
-    console.warn('WARNING: VAPID keys not found. Push notifications will NOT work.');
+    console.warn('WARNING: VAPID keys not found. Web Push notifications will NOT work.');
 }
 
 /**
@@ -20,10 +35,9 @@ const sendPushNotification = async (restaurantId, { title, body, icon, data, url
     try {
         console.log(`Sending push notification: "${title}" for restaurant ${restaurantId}`);
         // Find all active subscriptions for this restaurant
-        // Currently we send to all waiters/admins of the restaurant
         const subscriptions = await NotificationSubscription.find({ restaurantId });
 
-        const payload = JSON.stringify({
+        const webPushPayload = JSON.stringify({
             notification: {
                 title,
                 body,
@@ -36,12 +50,32 @@ const sendPushNotification = async (restaurantId, { title, body, icon, data, url
             }
         });
 
+        const fcmMessage = {
+            notification: {
+                title,
+                body
+            },
+            data: {
+                url: url || '/',
+                ...data
+            }
+        };
+
         const sendPromises = subscriptions.map(async (subDoc) => {
             try {
-                await webpush.sendNotification(subDoc.subscription, payload);
+                if (subDoc.fcmToken) {
+                    // Send via FCM
+                    await admin.messaging().send({
+                        token: subDoc.fcmToken,
+                        ...fcmMessage
+                    });
+                } else if (subDoc.subscription) {
+                    // Send via Web Push
+                    await webpush.sendNotification(subDoc.subscription, webPushPayload);
+                }
             } catch (error) {
                 // If subscription expired or failed, remove it
-                if (error.statusCode === 404 || error.statusCode === 410) {
+                if (error.statusCode === 404 || error.statusCode === 410 || error.code === 'messaging/registration-token-not-registered') {
                     console.log(`Push subscription expired for user ${subDoc.user}, removing...`);
                     await NotificationSubscription.deleteOne({ _id: subDoc._id });
                 } else {

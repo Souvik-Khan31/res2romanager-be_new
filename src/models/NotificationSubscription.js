@@ -30,6 +30,10 @@ const notificationSubscriptionSchema = new mongoose.Schema({
     deviceType: {
         type: String, // 'mobile', 'desktop'
         default: 'mobile'
+    },
+    fcmToken: {
+        type: String,
+        default: null
     }
 }, { timestamps: true });
 

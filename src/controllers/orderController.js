@@ -324,6 +324,13 @@ const placeOrder = async (req, res) => {
         const io = getIo();
         io.to(restaurantId).emit('newOrder', order);
 
+        // Send Push Notification for New Order
+        sendPushNotification(restaurantId, {
+            title: 'New Order Received!',
+            body: `Table ${order.tableNumber} just placed an order for ₹${order.totalAmount}.`,
+            url: '/admin/online-orders' // Or appropriate dashboard
+        });
+
         res.status(201).json(order);
 
     } catch (error) {
