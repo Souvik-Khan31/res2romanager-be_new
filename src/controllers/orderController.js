@@ -171,7 +171,8 @@ const placeOrder = async (req, res) => {
                 price: dbItem.price,
                 totalPrice,
                 notes: item.notes,
-                courseType: courseType || 'none'
+                courseType: courseType || 'none',
+                isTakeaway: item.isTakeaway || false
             });
         }
 
@@ -358,11 +359,10 @@ const getOrders = async (req, res) => {
             const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
             filter.createdAt = { $gte: last24h };
         } else if (date && date !== 'undefined' && date !== '') {
-            const start = new Date(date);
-            if (!isNaN(start.getTime())) {
-                start.setHours(0, 0, 0, 0);
-                const end = new Date(date);
-                end.setHours(23, 59, 59, 999);
+            const [year, month, day] = date.split('-').map(Number);
+            if (!isNaN(year)) {
+                const start = new Date(year, month - 1, day, 0, 0, 0, 0);
+                const end = new Date(year, month - 1, day, 23, 59, 59, 999);
                 filter.createdAt = { $gte: start, $lte: end };
             }
         } else if (!date && (['cook', 'waiter', 'delivery'].includes(req.user.role))) {
@@ -721,4 +721,40 @@ const submitRating = async (req, res) => {
     }
 };
 
-module.exports = { placeOrder, getOrders, getOrderById, updateOrderStatus, markOrderAsPaid, updateCourseStatus, submitRating };
+// @desc    Get My Orders (Customer)
+// @route   GET /api/orders/my-orders
+// @access  Private (Customer)
+const getMyOrders = async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        const phone = req.user.phone;
+
+        // If user has no phone linked, they can't see orders matched by phone
+        // ideally we should store userId in Order, but for now we fallback to phone
+        if (!phone) {
+            // Return empty list instead of error to avoid UI breakage
+            return res.json([]);
+        }
+
+        let query = { customerPhone: phone };
+
+        // Optional: Filter by restaurant if provided
+        if (req.query.restaurantId) {
+            query.restaurantId = req.query.restaurantId;
+        }
+
+        const orders = await Order.find(query)
+            .sort({ createdAt: -1 })
+            .select('tableNumber orderType items totalAmount status createdAt paymentStatus'); // Select only needed fields for list
+
+        res.json(orders);
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { placeOrder, getOrders, getOrderById, updateOrderStatus, markOrderAsPaid, updateCourseStatus, submitRating, getMyOrders };

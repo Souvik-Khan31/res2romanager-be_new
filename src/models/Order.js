@@ -8,6 +8,7 @@ const orderItemSchema = new mongoose.Schema({
     totalPrice: { type: Number, required: true },
     notes: String,
     courseType: { type: String, enum: ['starter', 'main-course', 'dessert', 'beverage', 'none'], default: 'none' },
+    isTakeaway: { type: Boolean, default: false },
     rating: { type: Number, max: 5, default: 0 }
 });
 

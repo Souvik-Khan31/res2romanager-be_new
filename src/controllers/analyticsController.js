@@ -13,13 +13,15 @@ const getDashboardStats = async (req, res) => {
         // Date Range Logic
         let start, end;
 
-        if (startDate && endDate) {
-            start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-            end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
+        if (startDate && endDate && startDate !== '' && endDate !== '') {
+            // Parse as local instead of UTC
+            const [sYear, sMonth, sDay] = startDate.split('-').map(Number);
+            const [eYear, eMonth, eDay] = endDate.split('-').map(Number);
+
+            start = new Date(sYear, sMonth - 1, sDay, 0, 0, 0, 0);
+            end = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
         } else {
-            // Default to today
+            // Default to today local
             start = new Date();
             start.setHours(0, 0, 0, 0);
             end = new Date();

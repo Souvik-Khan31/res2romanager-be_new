@@ -5,6 +5,7 @@ const { protect } = require('../middleware/authMiddleware');
 
 router.post('/', placeOrder); // Public
 router.post('/staff', protect, placeOrder); // Protected (Staff/Admin)
+router.get('/my-orders', protect, require('../controllers/orderController').getMyOrders); // Custom History
 router.get('/:id', getOrderById); // Public Tracking
 router.get('/', protect, getOrders);
 router.put('/:id/status', protect, updateOrderStatus);
