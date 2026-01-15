@@ -250,7 +250,7 @@ const placeOrder = async (req, res) => {
             items: orderItems,
             orderNote,
             billAmount,
-            taxAmount: deliveryFeeAmount, // Temporarily using taxAmount for delivery fee to avoid schema breakage if needed, or better: add to appliedCharges
+            taxAmount: totalAdditionalCharges,
             appliedCharges,
             packagingCharge: packagingChargeAmount,
             totalAmount,
@@ -344,7 +344,7 @@ const placeOrder = async (req, res) => {
 // @access  Private (Admin/Cook/Waiter)
 const getOrders = async (req, res) => {
     try {
-        const { status, date, waiterId, deliveryBoyId, orderType } = req.query;
+        const { status, date, startDate, endDate, waiterId, deliveryBoyId, orderType } = req.query;
         let filter = { restaurantId: new mongoose.Types.ObjectId(req.user.restaurantId.toString()) };
 
         if (status && status !== 'undefined' && status !== '') {
@@ -356,7 +356,12 @@ const getOrders = async (req, res) => {
         }
 
         // Date filter logic
-        if (date === 'today') {
+        if (startDate && endDate) {
+            filter.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        } else if (date === 'today') {
             const start = new Date();
             start.setHours(0, 0, 0, 0);
             const end = new Date();

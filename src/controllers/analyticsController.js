@@ -14,12 +14,17 @@ const getDashboardStats = async (req, res) => {
         let start, end;
 
         if (startDate && endDate && startDate !== '' && endDate !== '') {
-            // Parse as local instead of UTC
-            const [sYear, sMonth, sDay] = startDate.split('-').map(Number);
-            const [eYear, eMonth, eDay] = endDate.split('-').map(Number);
+            if (startDate.includes('T')) {
+                start = new Date(startDate);
+                end = new Date(endDate);
+            } else {
+                // Parse as local instead of UTC
+                const [sYear, sMonth, sDay] = startDate.split('-').map(Number);
+                const [eYear, eMonth, eDay] = endDate.split('-').map(Number);
 
-            start = new Date(sYear, sMonth - 1, sDay, 0, 0, 0, 0);
-            end = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
+                start = new Date(sYear, sMonth - 1, sDay, 0, 0, 0, 0);
+                end = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
+            }
         } else {
             // Default to today local
             start = new Date();
