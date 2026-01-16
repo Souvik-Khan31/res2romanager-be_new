@@ -44,7 +44,7 @@ const createTable = async (req, res) => {
         const restaurant = await Restaurant.findById(req.user.restaurantId);
         const secretVersion = restaurant.settings?.secretVersion || 1;
 
-        const origin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:4200';
+        const origin = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:4200';
         const token = generateTableToken(req.user.restaurantId, tableNumber, secretVersion);
         const qrUrl = `${origin}/menu/${req.user.restaurantId}/${tableNumber}?t=${token}`;
 
