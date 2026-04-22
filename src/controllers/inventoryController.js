@@ -1,6 +1,7 @@
 const InventoryItem = require('../models/InventoryItem');
 const Supplier = require('../models/Supplier');
 const Restaurant = require('../models/Restaurant');
+const InventoryBill = require('../models/InventoryBill');
 const asyncHandler = require('express-async-handler');
 
 /**
@@ -277,10 +278,21 @@ const processBulkBilling = asyncHandler(async (req, res) => {
         throw new Error('No items to process');
     }
 
+    const billedItems = [];
+    let totalAmount = 0;
+
     // Process each item
     for (const billItem of items) {
         // Skip custom/ad-hoc items
         if (billItem.isCustom || (typeof billItem._id === 'string' && billItem._id.startsWith('custom_')) || (typeof billItem._id === 'string' && billItem._id.startsWith('adhoc_'))) {
+            billedItems.push({
+                name: billItem.name || 'Custom Item',
+                quantityBilled: billItem.billQuantity,
+                unit: billItem.unit || 'pcs',
+                sellingPrice: billItem.sellingPrice || 0,
+                totalPrice: (billItem.billQuantity || 0) * (billItem.sellingPrice || 0)
+            });
+            totalAmount += (billItem.billQuantity || 0) * (billItem.sellingPrice || 0);
             continue;
         }
 
@@ -302,11 +314,35 @@ const processBulkBilling = asyncHandler(async (req, res) => {
 
             item.quantity -= billItem.billQuantity;
             await item.save();
+
+            const itemTotal = (billItem.billQuantity || 0) * (billItem.sellingPrice || item.sellingPrice || 0);
+
+            billedItems.push({
+                itemId: item._id,
+                name: item.name,
+                category: item.category,
+                quantityBilled: billItem.billQuantity,
+                unit: item.unit,
+                sellingPrice: billItem.sellingPrice || item.sellingPrice || 0,
+                totalPrice: itemTotal
+            });
+            totalAmount += itemTotal;
         } else {
-            // Skip or error? For now, we'll log and continue or just ignore
             console.warn(`Item not found during billing: ${billItem._id}`);
         }
     }
+
+    // Save the bill
+    const bill = new InventoryBill({
+        restaurantId: req.user.restaurantId,
+        billedBy: req.user._id,
+        customerName: customerName || '',
+        customerPhone: customerPhone || '',
+        items: billedItems,
+        totalAmount
+    });
+    
+    await bill.save();
 
     // Create Audit Log for this billing transaction
     const AuditLog = require('../models/AuditLog');
@@ -314,11 +350,41 @@ const processBulkBilling = asyncHandler(async (req, res) => {
         restaurantId: req.user.restaurantId,
         user: req.user._id,
         action: 'INVENTORY_BILLING',
-        details: `Bulk billing processed for ${items.length} items.${customerName ? ' Customer Name: ' + customerName : ''}${customerPhone ? ' Customer Phone: ' + customerPhone : ''}`,
+        details: `Bulk billing processed for ${items.length} items. Total: ${totalAmount}. ${customerName ? ' Customer Name: ' + customerName : ''}${customerPhone ? ' Customer Phone: ' + customerPhone : ''}`,
         entityType: 'Inventory'
     });
 
-    res.status(200).json({ message: 'Billing processed successfully' });
+    res.status(200).json({ message: 'Billing processed successfully', bill });
+});
+
+/**
+ * @desc    Get inventory billing history
+ * @route   GET /api/inventory/billing/history
+ * @access  Private/Admin
+ */
+const getBillingHistory = asyncHandler(async (req, res) => {
+    const { startDate, endDate } = req.query;
+    
+    let query = {
+        restaurantId: req.user.restaurantId
+    };
+
+    if (startDate && endDate) {
+        // Adjust endDate to end of day
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        
+        query.createdAt = {
+            $gte: new Date(startDate),
+            $lte: end
+        };
+    }
+
+    const bills = await InventoryBill.find(query)
+        .populate('billedBy', 'name email')
+        .sort({ createdAt: -1 });
+
+    res.json(bills);
 });
 
 /**
@@ -364,11 +430,8 @@ module.exports = {
     createSupplier,
     updateSupplier,
     deleteSupplier,
-    getSuppliers,
-    createSupplier,
-    updateSupplier,
-    deleteSupplier,
     processBulkBilling,
+    getBillingHistory,
     getLabelSettings,
     updateLabelSettings
 };

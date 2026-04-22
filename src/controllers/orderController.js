@@ -769,4 +769,131 @@ const getMyOrders = async (req, res) => {
     }
 };
 
-module.exports = { placeOrder, getOrders, getOrderById, updateOrderStatus, markOrderAsPaid, updateCourseStatus, submitRating, getMyOrders };
+// @desc    Add more items to an existing active order
+// @route   PUT /api/orders/:id/add-items
+// @access  Private (Admin/Staff)
+const addItemsToOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { items } = req.body;
+
+        if (!items || items.length === 0) {
+            return res.status(400).json({ message: 'No items provided' });
+        }
+
+        const order = await Order.findById(id);
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+        if (order.restaurantId.toString() !== req.user.restaurantId.toString()) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+        if (['completed', 'cancelled'].includes(order.status)) {
+            return res.status(400).json({ message: 'Cannot add items to a completed or cancelled order' });
+        }
+
+        let additionalAmount = 0;
+        const newItems = [];
+
+        for (const item of items) {
+            const dbItem = await MenuItem.findById(item.menuItemId);
+            if (!dbItem || !dbItem.isAvailable) continue;
+
+            const totalPrice = dbItem.price * item.quantity;
+            additionalAmount += totalPrice;
+
+            let courseType = dbItem.courseType;
+            if (!courseType || courseType === 'none') {
+                const category = await MenuCategory.findById(dbItem.categoryId);
+                if (category) {
+                    const catName = category.name.toLowerCase();
+                    if (catName.includes('starter') || catName.includes('appetizer') || catName.includes('soup') || catName.includes('salad')) courseType = 'starter';
+                    else if (catName.includes('main')) courseType = 'main-course';
+                    else if (catName.includes('dessert') || catName.includes('sweet')) courseType = 'dessert';
+                    else if (catName.includes('beverage') || catName.includes('drink') || catName.includes('juice') || catName.includes('coffee') || catName.includes('tea')) courseType = 'beverage';
+                }
+            }
+
+            newItems.push({
+                menuItemId: dbItem._id,
+                name: dbItem.name,
+                quantity: item.quantity,
+                price: dbItem.price,
+                totalPrice,
+                notes: item.notes,
+                courseType: courseType || 'none',
+                isTakeaway: item.isTakeaway || false
+            });
+        }
+
+        if (newItems.length === 0) {
+            return res.status(400).json({ message: 'No valid items found to add' });
+        }
+
+        // Push new items into existing order
+        order.items.push(...newItems);
+        order.billAmount += additionalAmount;
+
+        // Recalculate total (keep existing charges ratios or just add raw amount)
+        const restaurant = await Restaurant.findById(order.restaurantId);
+        let addedCharges = 0;
+        if (restaurant?.settings?.additionalCharges) {
+            restaurant.settings.additionalCharges.forEach(charge => {
+                if (charge.isEnabled && (charge.applicableTo === 'all' || charge.applicableTo === order.orderType)) {
+                    if (charge.type === 'percent') {
+                        addedCharges += (additionalAmount * charge.value) / 100;
+                    }
+                }
+            });
+        }
+
+        order.taxAmount = (order.taxAmount || 0) + addedCharges;
+        order.totalAmount = order.billAmount + order.taxAmount + (order.packagingCharge || 0);
+
+        // Revert to 'placed' if it was served (new items arrived)
+        if (['served', 'ready'].includes(order.status)) {
+            order.status = 'placed';
+            order.timeline.push({ status: 'placed', user: req.user.name || 'Admin', time: new Date() });
+        }
+
+        order.timeline.push({ status: order.status, user: `${req.user.name || 'Admin'} added items`, time: new Date() });
+
+        // Update course statuses
+        newItems.forEach(item => {
+            const course = item.courseType || 'none';
+            const existing = order.courseStatuses.find(cs => cs.courseType === course);
+            if (existing) {
+                existing.itemIds.push(item._id);
+                existing.status = 'pending';
+            } else {
+                order.courseStatuses.push({ courseType: course, status: 'pending', itemIds: [item._id] });
+            }
+        });
+
+        await order.save();
+
+        // Deduct inventory
+        try {
+            await Promise.all(newItems.map(item =>
+                InventoryItem.updateOne(
+                    { restaurantId: order.restaurantId, name: item.name },
+                    { $inc: { quantity: -item.quantity } }
+                )
+            ));
+        } catch (err) { console.error('Inventory sync error:', err); }
+
+        const io = getIo();
+        io.to(order.restaurantId.toString()).emit('orderUpdate', order);
+
+        sendPushNotification(order.restaurantId.toString(), {
+            title: 'Items Added to Order!',
+            body: `Table ${order.tableNumber}: ${newItems.length} more item(s) added.`,
+            url: '/admin/online-orders'
+        });
+
+        res.json(order);
+    } catch (error) {
+        console.error('addItemsToOrder error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { placeOrder, getOrders, getOrderById, updateOrderStatus, markOrderAsPaid, updateCourseStatus, submitRating, getMyOrders, addItemsToOrder };

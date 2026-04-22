@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { placeOrder, getOrders, updateOrderStatus, getOrderById, updateCourseStatus, submitRating } = require('../controllers/orderController');
+const { placeOrder, getOrders, updateOrderStatus, getOrderById, updateCourseStatus, submitRating, addItemsToOrder } = require('../controllers/orderController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.post('/', placeOrder); // Public
@@ -9,6 +9,7 @@ router.get('/my-orders', protect, require('../controllers/orderController').getM
 router.get('/:id', getOrderById); // Public Tracking
 router.get('/', protect, getOrders);
 router.put('/:id/status', protect, updateOrderStatus);
+router.put('/:id/add-items', protect, addItemsToOrder);
 router.put('/:id/course/:courseType/status', protect, updateCourseStatus);
 router.post('/:orderId/pay', protect, require('../controllers/orderController').markOrderAsPaid);
 router.put('/:id/rate', submitRating); // Public for customers to rate via order tracking link

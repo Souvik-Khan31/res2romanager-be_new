@@ -12,6 +12,7 @@ const {
     updateSupplier,
     deleteSupplier,
     processBulkBilling,
+    getBillingHistory,
     getLabelSettings,
     updateLabelSettings
 } = require('../controllers/inventoryController');
@@ -20,6 +21,9 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 // Billing Routes
 router.route('/billing/bulk')
     .post(protect, processBulkBilling);
+
+router.route('/billing/history')
+    .get(protect, authorize('admin', 'super-admin'), getBillingHistory);
 
 // Label Designer Settings
 router.route('/label-settings')
