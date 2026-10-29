@@ -16,6 +16,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 }));
 
 // Routes
+app.use('/api/email-tracking', require('./src/routes/emailTrackingRoutes'));
 app.use('/api/auth', require('./src/routes/authRoutes'));
 app.use('/api/users', require('./src/routes/userRoutes'));
 app.use('/api/menu', require('./src/routes/menuRoutes'));
